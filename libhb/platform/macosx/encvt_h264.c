@@ -166,23 +166,25 @@ OSStatus initVTSession(hb_work_object_t * w, hb_job_t * job, hb_work_private_t *
     err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_High_5_0);
     if (err != noErr)
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_ProfileLevel failed");
-    
+
     CFRelease(encoderSpecifications);
     
     return err;
 
 }
 
-void setupMagicCookie(hb_work_object_t * w, hb_job_t * job, hb_work_private_t * pv)
+OSStatus setupMagicCookie(hb_work_object_t * w, hb_job_t * job, hb_work_private_t * pv)
 {
     OSStatus err;
     CMFormatDescriptionRef format = NULL;
 
     err = initVTSession(w, job, pv);
+    if (err != noErr)
+        return err;
 
     size_t rgbBufSize = sizeof(uint8) * 3 * job->width * job->height;
     uint8 *rgbBuf = malloc(rgbBufSize);
-
+    
     // Compress a random frame to get the magicCookie
     CVPixelBufferRef pxbuffer = NULL;
     CVPixelBufferCreateWithBytes(kCFAllocatorDefault,
@@ -211,50 +213,68 @@ void setupMagicCookie(hb_work_object_t * w, hb_job_t * job, hb_work_private_t * 
     VTCompressionSessionCompleteFrames(pv->session, CMTimeMake(0,90000));
                                 
     CMSampleBufferRef sampleBuffer = (CMSampleBufferRef) CMSimpleQueueDequeue(pv->queue);
-        
-    format = CMSampleBufferGetFormatDescription(sampleBuffer);
-    if (!format)
-        hb_log("VTCompressionSession: Format Description error");
-            
-    CFDictionaryRef extentions = CMFormatDescriptionGetExtensions(format);
-    if (!extentions)
-        hb_log("VTCompressionSession: Format Description Extensions error");
 
-    CFDictionaryRef atoms = CFDictionaryGetValue(extentions, kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms);
-    CFDataRef magicCookie = CFDictionaryGetValue(atoms, CFSTR("avcC"));
-    if (!magicCookie)
-        hb_log("VTCompressionSession: Magic Cookie error");
-
-    const uint8_t *avcCAtom = CFDataGetBytePtr(magicCookie);
-    
-    SInt64 i;
-    int8_t spsCount = (avcCAtom[5] & 0x1f);
-    uint8_t ptrPos = 6;
-    uint8_t spsPos = 0;
-    for (i = 0; i < spsCount; i++) {
-        uint16_t spsSize = (avcCAtom[ptrPos++] << 8) & 0xff00;
-        spsSize += avcCAtom[ptrPos++] & 0xff;
-        memcpy(w->config->h264.sps + spsPos, avcCAtom+ptrPos, spsSize);;
-        ptrPos += spsSize;
-        spsPos += spsSize;
+    if (!sampleBuffer)
+    {
+        hb_log("VTCompressionSession: sampleBuffer == NULL");
+        VTCompressionSessionInvalidate(pv->session);
+        CFRelease(pv->session);
+        return -1;
     }
-    w->config->h264.sps_length = spsPos;
+    else
+    {
+        format = CMSampleBufferGetFormatDescription(sampleBuffer);
+        if (!format)
+            hb_log("VTCompressionSession: Format Description error");
+        else
+        {
+            CFDictionaryRef extentions = CMFormatDescriptionGetExtensions(format);
+            if (!extentions)
+                hb_log("VTCompressionSession: Format Description Extensions error");
+            else
+            {
+                
+                CFDictionaryRef atoms = CFDictionaryGetValue(extentions, kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms);
+                CFDataRef magicCookie = CFDictionaryGetValue(atoms, CFSTR("avcC"));
+                if (!magicCookie)
+                    hb_log("VTCompressionSession: Magic Cookie error");
+                
+                const uint8_t *avcCAtom = CFDataGetBytePtr(magicCookie);
+                
+                SInt64 i;
+                int8_t spsCount = (avcCAtom[5] & 0x1f);
+                uint8_t ptrPos = 6;
+                uint8_t spsPos = 0;
+                for (i = 0; i < spsCount; i++) {
+                    uint16_t spsSize = (avcCAtom[ptrPos++] << 8) & 0xff00;
+                    spsSize += avcCAtom[ptrPos++] & 0xff;
+                    memcpy(w->config->h264.sps + spsPos, avcCAtom+ptrPos, spsSize);;
+                    ptrPos += spsSize;
+                    spsPos += spsSize;
+                }
+                w->config->h264.sps_length = spsPos;
+                
+                int8_t ppsCount = avcCAtom[ptrPos++];
+                uint8_t ppsPos = 0;
+                for (i = 0; i < ppsCount; i++) {
+                    uint16_t ppsSize = (avcCAtom[ptrPos++] << 8) & 0xff00;
+                    ppsSize += avcCAtom[ptrPos++] & 0xff;
+                    memcpy(w->config->h264.pps + ppsPos, avcCAtom+ptrPos, ppsSize);;
+                    
+                    ptrPos += ppsSize;
+                    ppsPos += ppsSize;
+                }
+                w->config->h264.pps_length = ppsPos;
+            }
+        }
 
-    int8_t ppsCount = avcCAtom[ptrPos++];
-    uint8_t ppsPos = 0;
-    for (i = 0; i < ppsCount; i++) {
-        uint16_t ppsSize = (avcCAtom[ptrPos++] << 8) & 0xff00;
-        ppsSize += avcCAtom[ptrPos++] & 0xff;
-        memcpy(w->config->h264.pps + ppsPos, avcCAtom+ptrPos, ppsSize);;
-
-        ptrPos += ppsSize;
-        ppsPos += ppsSize;
+        CFRelease(sampleBuffer);
     }
-    w->config->h264.pps_length = ppsPos;
-    
+
     VTCompressionSessionInvalidate(pv->session);
     CFRelease(pv->session);
-    CFRelease(sampleBuffer);
+    
+    return err;
 }
 
 int encvt_h264Init( hb_work_object_t * w, hb_job_t * job )
@@ -270,12 +290,18 @@ int encvt_h264Init( hb_work_object_t * w, hb_job_t * job )
                         200,
                         &pv->queue);
 
-    setupMagicCookie(w, job, pv);
+    err = setupMagicCookie(w, job, pv);
+    if (err != noErr)
+    {
+        hb_log("VTCompressionSession: Magic Cookie Error err=%"PRId64"", (int64_t)err);
+        *job->die = 1;
+        return -1;
+    }
 
     err = initVTSession(w, job, pv);    
     if (err != noErr)
     {
-        hb_log("Error creating a VTCompressionSession err=%"PRId64"", (int64_t)err);
+        hb_log("VTCompressionSession: Error creating a VTCompressionSession err=%"PRId64"", (int64_t)err);
         *job->die = 1;
         return -1;
     }
