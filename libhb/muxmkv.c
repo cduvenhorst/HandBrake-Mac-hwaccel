@@ -93,6 +93,7 @@ static int MKVInit( hb_mux_object_t * m )
     switch (job->vcodec)
     {
         case HB_VCODEC_X264:
+        case HB_VCODEC_VT_H264:
             track->codecID = MK_VCODEC_MP4AVC;
             /* Taken from x264 muxers.c */
             avcC_len = 5 + 1 + 2 + job->config.h264.sps_length + 1 + 2 + job->config.h264.pps_length;

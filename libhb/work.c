@@ -1026,6 +1026,9 @@ static void do_job(hb_job_t *job)
         case HB_VCODEC_X264:
             w = hb_get_work( WORK_ENCX264 );
             break;
+        case HB_VCODEC_VT_H264:
+            w = hb_get_work( WORK_ENCVT_H264 );
+            break;
         case HB_VCODEC_THEORA:
             w = hb_get_work( WORK_ENCTHEORA );
             break;

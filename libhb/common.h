@@ -403,6 +403,7 @@ struct hb_job_s
 #define HB_VCODEC_MASK         0x00000FF
 #define HB_VCODEC_X264         0x0000001
 #define HB_VCODEC_THEORA       0x0000002
+#define HB_VCODEC_VT_H264      0x0000004
 #define HB_VCODEC_FFMPEG_MPEG4 0x0000010
 #define HB_VCODEC_FFMPEG_MPEG2 0x0000020
 #define HB_VCODEC_FFMPEG_MASK  0x00000F0
@@ -1004,6 +1005,7 @@ extern hb_work_object_t hb_encvorbis;
 extern hb_work_object_t hb_muxer;
 extern hb_work_object_t hb_encca_aac;
 extern hb_work_object_t hb_encca_haac;
+extern hb_work_object_t hb_encvt_h264;
 extern hb_work_object_t hb_encavcodeca;
 extern hb_work_object_t hb_reader;
 
