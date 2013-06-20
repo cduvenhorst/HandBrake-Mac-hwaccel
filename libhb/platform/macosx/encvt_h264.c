@@ -117,38 +117,52 @@ OSStatus initVTSession(hb_work_object_t * w, hb_job_t * job, hb_work_private_t *
         hb_log("Error creating a VTCompressionSession err=%"PRId64"", (int64_t)err);
         return err;
     }
+    CFNumberRef cfValue = NULL;
     
     err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanTrue);
     if (err != noErr)
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_AllowFrameReordering failed");
     
     const int maxKeyFrameInterval = 10 * 30;
-    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_MaxKeyFrameInterval,
-                            CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &maxKeyFrameInterval));
+    cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &maxKeyFrameInterval);
+
+    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_MaxKeyFrameInterval, cfValue);
+    CFRelease(cfValue);
+    
     if (err != noErr)
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_MaxKeyFrameInterval failed");
     
     const int maxFrameDelayCount = 24;
-    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_MaxFrameDelayCount,
-                            CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &maxFrameDelayCount));
+    cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &maxFrameDelayCount);
+
+    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_MaxFrameDelayCount, cfValue);
+    CFRelease(cfValue);
+
     if (err != noErr)
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_MaxKeyFrameInterval failed");
     
     const int frameRate = (int)( (double)job->vrate / (double)job->vrate_base + 0.5 );
-    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_ExpectedFrameRate,
-                            CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &frameRate));
+    cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &frameRate);
+
+    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_ExpectedFrameRate, cfValue);
+    CFRelease(cfValue);
+
     if (err != noErr)
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_ExpectedFrameRate failed");
+
     
     if( job->vquality < 0 )
     {
         const int averageBitRate = job->vbitrate * 1024;
-        err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_AverageBitRate,
-                            CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &averageBitRate));
+        cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &averageBitRate);
+
+        err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_AverageBitRate, cfValue);
+        CFRelease(cfValue);
+
         if (err != noErr)
             hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_AverageBitRate failed");
     }
-
+    
     err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_High_5_0);
     if (err != noErr)
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_ProfileLevel failed");
@@ -156,6 +170,7 @@ OSStatus initVTSession(hb_work_object_t * w, hb_job_t * job, hb_work_private_t *
     CFRelease(encoderSpecifications);
     
     return err;
+
 }
 
 void setupMagicCookie(hb_work_object_t * w, hb_job_t * job, hb_work_private_t * pv)
@@ -297,7 +312,7 @@ hb_buffer_t* extractData(CMSampleBufferRef sampleBuffer, hb_work_object_t * w)
     hb_work_private_t * pv = w->private_data;
     hb_job_t * job = pv->job;
     hb_buffer_t *buf = NULL;
-
+    
     CMItemCount samplesNum = CMSampleBufferGetNumSamples(sampleBuffer);
     if (samplesNum > 1)
         hb_log("VTCompressionSession: more than 1 sample in sampleBuffer = %ld", samplesNum);
@@ -418,18 +433,17 @@ int encvt_h264Work( hb_work_object_t * w, hb_buffer_t ** buf_in,
     // Create a CVPixelBuffer to wrap the frame data
     CVPixelBufferRef pxbuffer = NULL;
 
-    hb_buffer_t *in_c = hb_buffer_dup(in);
-    void *planeBaseAddress[3] = {in_c->plane[0].data, in_c->plane[1].data, in_c->plane[2].data};
-    size_t planeWidth[3] = {in_c->plane[0].width, in_c->plane[1].width, in_c->plane[2].width};
-    size_t planeHeight[3] = {in_c->plane[0].height, in_c->plane[1].height, in_c->plane[2].height};
-    size_t planeBytesPerRow[3] = {in_c->plane[0].stride, in_c->plane[1].stride, in_c->plane[2].stride};
+    void *planeBaseAddress[3] = {in->plane[0].data, in->plane[1].data, in->plane[2].data};
+    size_t planeWidth[3] = {in->plane[0].width, in->plane[1].width, in->plane[2].width};
+    size_t planeHeight[3] = {in->plane[0].height, in->plane[1].height, in->plane[2].height};
+    size_t planeBytesPerRow[3] = {in->plane[0].stride, in->plane[1].stride, in->plane[2].stride};
 
     err = CVPixelBufferCreateWithPlanarBytes(
                                  kCFAllocatorDefault,
     							 job->width,
     							 job->height,
     							 kCVPixelFormatType_420YpCbCr8Planar,
-    							 in_c->data,
+    							 in->data,
     							 0,
     							 3,
     							 planeBaseAddress,
@@ -437,7 +451,7 @@ int encvt_h264Work( hb_work_object_t * w, hb_buffer_t ** buf_in,
     							 planeHeight,
     							 planeBytesPerRow,
     							 &pixelBufferReleasePlanarBytesCallback,
-    							 in_c,
+    							 in,
     							 NULL,
     							 &pxbuffer);
 
@@ -490,6 +504,10 @@ int encvt_h264Work( hb_work_object_t * w, hb_buffer_t ** buf_in,
         buf = extractData(sampleBuffer, w);
         CFRelease(sampleBuffer);
     }
+
+    // Take ownership of the input buffer
+    // Avoid a memcpy
+    *buf_in = NULL;
 
     *buf_out = buf;
 
