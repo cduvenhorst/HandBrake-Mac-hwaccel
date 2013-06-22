@@ -1,0 +1,7 @@
+
+build/
+download/
+.DS_Store
+macosx/HandBrake.xcodeproj/xcuserdata/damians.xcuserdatad/xcschemes/xcschememanagement.plist
+
+macosx/HandBrake.xcodeproj/project.xcworkspace/xcuserdata/damians.xcuserdatad/UserInterfaceState.xcuserstate
