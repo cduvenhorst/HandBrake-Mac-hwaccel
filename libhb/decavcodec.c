@@ -38,9 +38,14 @@
     VC1 decoder) can't easily be used by the HB mpeg stream reader.
  */
 
+#define USE_VDA
+
 #include "hb.h"
+#include "libavcodec/vda.h"
 #include "hbffmpeg.h"
 #include "audio_resample.h"
+
+#include <CoreVideo/CoreVideo.h>
 
 static void compute_frame_duration( hb_work_private_t *pv );
 static void flushDelayQueue( hb_work_private_t *pv );
@@ -274,6 +279,11 @@ static void closePrivData( hb_work_private_t ** ppv )
             hb_log( "%s-decoder done: %u frames, %u decoder errors, %u drops",
                     pv->context->codec->name, pv->nframes, pv->decode_errors,
                     pv->ndrops );
+        }
+        if ( pv->context->hwaccel_context )
+        {
+            ff_vda_destroy_decoder(pv->context->hwaccel_context);
+            free (pv->context->hwaccel_context);
         }
         if ( pv->sws_context )
         {
@@ -595,7 +605,25 @@ static hb_buffer_t *copy_frame( hb_work_private_t *pv, AVFrame *frame )
     hb_buffer_t *buf = hb_video_buffer_init( w, h );
     uint8_t *dst = buf->data;
 
-    if (context->pix_fmt != AV_PIX_FMT_YUV420P || w != context->width ||
+    if (context->pix_fmt == AV_PIX_FMT_VDA_VLD)
+    {
+        // AVFrame's data[3] contains the CVPixelBufferRef object.
+        CVPixelBufferRef buffer = ( CVPixelBufferRef )frame->data[3];
+        int i;
+
+        CVPixelBufferLockBaseAddress( buffer, 0 );
+
+        for ( i = 0; i < 3; i++ )
+        {
+            w = buf->plane[i].stride;
+            h = buf->plane[i].height;
+            dst = buf->plane[i].data;
+            copy_plane( dst, CVPixelBufferGetBaseAddressOfPlane( buffer, i ), w, CVPixelBufferGetBytesPerRowOfPlane( buffer, i ), h );
+        }
+
+        CVPixelBufferUnlockBaseAddress( buffer, 0 );
+    }
+    else if (context->pix_fmt != AV_PIX_FMT_YUV420P || w != context->width ||
         h != context->height)
     {
         // have to convert to our internal color space and/or rescale
@@ -1031,6 +1059,80 @@ static hb_buffer_t *link_buf_list( hb_work_private_t *pv )
     return head;
 }
 
+enum PixelFormat hb_ffmpeg_get_format( AVCodecContext *p_context, const enum PixelFormat *pi_fmt )
+{
+    hb_log( "hb_ffmpeg_get_format" );
+
+    int i;
+    for( i = 0; pi_fmt[i] != AV_PIX_FMT_NONE; i++ )
+    {
+        if( pi_fmt[i] == AV_PIX_FMT_VDA_VLD )
+        {
+            struct vda_context *vda_ctx;
+            vda_ctx = calloc(1,sizeof(struct vda_context));
+            vda_ctx->decoder = NULL;
+            vda_ctx->width = p_context->width;
+            vda_ctx->height = p_context->height;
+            vda_ctx->format = 'avc1';
+            vda_ctx->cv_pix_fmt_type = kCVPixelFormatType_420YpCbCr8Planar;
+            vda_ctx->use_sync_decoding = 1; // recommended, async decoding is deprecated.
+
+            int status = ff_vda_create_decoder(vda_ctx,p_context->extradata,p_context->extradata_size);
+
+            if (status)
+                hb_log( "decavcodecvInit: vda create decoder failed");
+            else
+            {
+                hb_log( "decavcodecvInit: vda create decoder ok");
+                p_context->hwaccel_context = vda_ctx;
+            }
+    
+            return pi_fmt[i];
+        }
+    }
+
+    return avcodec_default_get_format( p_context, pi_fmt );
+}
+
+static int hb_ffmpeg_get_buffer( struct AVCodecContext *c, AVFrame *pic )
+{
+    int i = 0;
+    if (c->pix_fmt == AV_PIX_FMT_VDA_VLD)
+    {
+        if (pic)
+        {
+            pic->type = FF_BUFFER_TYPE_USER;
+            for( i = 0; i < 4; i++ )
+            {
+                pic->data[i] = NULL;
+                pic->linesize[i] = 0;
+
+                if( i == 0 || i == 3 )
+                pic->data[i] = 1; // dummy
+            }
+        }
+        
+        return 0;
+    }
+    return avcodec_default_get_buffer( c, pic );
+}
+
+static void hb_ffmpeg_release_buffer(struct AVCodecContext *c, AVFrame *pic)
+{
+    if ( c->pix_fmt == AV_PIX_FMT_VDA_VLD )
+    {
+        CVPixelBufferRef cv_buffer = ( CVPixelBufferRef )pic->data[3];
+
+        if ( cv_buffer )
+        {
+            CVPixelBufferRelease( cv_buffer );
+            pic->data[3] = NULL;
+        }
+    }
+    
+    return avcodec_default_release_buffer( c, pic );
+}
+
 static int decavcodecvInit( hb_work_object_t * w, hb_job_t * job )
 {
 
@@ -1047,7 +1149,7 @@ static int decavcodecvInit( hb_work_object_t * w, hb_job_t * job )
 
     if( pv->job && pv->job->title && !pv->job->title->has_resolution_change )
     {
-        pv->threads = HB_FFMPEG_THREADS_AUTO;
+        pv->threads = 1; //HB_FFMPEG_THREADS_AUTO;
     }
     if ( pv->title->opaque_priv )
     {
@@ -1063,6 +1165,10 @@ static int decavcodecvInit( hb_work_object_t * w, hb_job_t * job )
         pv->context->workaround_bugs = FF_BUG_AUTODETECT;
         pv->context->err_recognition = AV_EF_CRCCHECK;
         pv->context->error_concealment = FF_EC_GUESS_MVS|FF_EC_DEBLOCK;
+
+        pv->context->get_format = hb_ffmpeg_get_format;
+        pv->context->get_buffer = hb_ffmpeg_get_buffer;
+        pv->context->release_buffer = hb_ffmpeg_release_buffer;
 
         if ( hb_avcodec_open( pv->context, codec, NULL, pv->threads ) )
         {
