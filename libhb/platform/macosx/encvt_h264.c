@@ -163,7 +163,7 @@ OSStatus initVTSession(hb_work_object_t * w, hb_job_t * job, hb_work_private_t *
             hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_AverageBitRate failed");
     }
     
-    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_High_5_0);
+    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Main_4_1);
     if (err != noErr)
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_ProfileLevel failed");
 
