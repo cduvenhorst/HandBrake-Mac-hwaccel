@@ -1068,7 +1068,7 @@ enum PixelFormat hb_ffmpeg_get_format( AVCodecContext *p_context, const enum Pix
     int i;
     for( i = 0; pi_fmt[i] != AV_PIX_FMT_NONE; i++ )
     {
-        if( pi_fmt[i] == AV_PIX_FMT_VDA_VLD )
+        if( pi_fmt[i] == AV_PIX_FMT_VDA_VLD && p_context->extradata_size >= 7 )
         {
             struct vda_context *vda_ctx;
             vda_ctx = calloc(1,sizeof(struct vda_context));
@@ -1077,22 +1077,24 @@ enum PixelFormat hb_ffmpeg_get_format( AVCodecContext *p_context, const enum Pix
             vda_ctx->height = p_context->height;
             vda_ctx->format = 'avc1';
             vda_ctx->cv_pix_fmt_type = kCVPixelFormatType_420YpCbCr8Planar;
-            vda_ctx->use_sync_decoding = 1; // recommended, async decoding is deprecated.
+            vda_ctx->use_sync_decoding = 1;
 
             int status = ff_vda_create_decoder(vda_ctx,p_context->extradata,p_context->extradata_size);
 
             if (status)
+            {
                 hb_log( "decavcodecvInit: VDA create decoder failed");
+                free(vda_ctx);
+            }
             else
             {
                 hb_log( "decavcodecvInit: VDA Decoder created");
                 p_context->hwaccel_context = vda_ctx;
-            }
-    
+            }    
             return pi_fmt[i];
         }
     }
-#endif USE_VDA
+#endif
 
     return avcodec_default_get_format( p_context, pi_fmt );
 }
@@ -1200,6 +1202,10 @@ static int decavcodecvInit( hb_work_object_t * w, hb_job_t * job )
         pv->context->workaround_bugs = FF_BUG_AUTODETECT;
         pv->context->err_recognition = AV_EF_CRCCHECK;
         pv->context->error_concealment = FF_EC_GUESS_MVS|FF_EC_DEBLOCK;
+        
+        pv->context->get_format = hb_ffmpeg_get_format;
+        pv->context->get_buffer = hb_ffmpeg_get_buffer;
+        pv->context->release_buffer = hb_ffmpeg_release_buffer;
     }
     return 0;
 }
@@ -1345,11 +1351,16 @@ static int decavcodecvWork( hb_work_object_t * w, hb_buffer_t ** buf_in,
             hb_buffer_close( &in );
             return HB_WORK_OK;
         }
+
+        pv->context->get_format = hb_ffmpeg_get_format;
+        pv->context->get_buffer = hb_ffmpeg_get_buffer;
+        pv->context->release_buffer = hb_ffmpeg_release_buffer;
+
         // disable threaded decoding for scan, can cause crashes
         if ( hb_avcodec_open( pv->context, codec, NULL, pv->threads ) )
         {
             hb_log( "decavcodecvWork: avcodec_open failed" );
-            *buf_out = hb_buffer_init( 0 );;
+            *buf_out = hb_buffer_init( 0 );
             return HB_WORK_DONE;
         }
         pv->video_codec_opened = 1;
