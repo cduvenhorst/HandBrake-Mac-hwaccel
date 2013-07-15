@@ -84,6 +84,16 @@
     return;
 }
 
+- (void) setVideoEncoderName: (NSString *)encoderName
+{
+    // set the name of the label in case it's not Theora
+    [fDisplayTheoraOptionsLabel
+     setStringValue:
+     [NSString
+      stringWithFormat:@"HandBrake does not support advanced options for %@",
+      encoderName]];
+}
+
  - (void) enableUI: (bool) b
 {
     unsigned i;

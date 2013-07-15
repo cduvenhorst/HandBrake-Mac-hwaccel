@@ -70,6 +70,7 @@
 - (void) enableUI: (bool) b;
 - (void) setHidden: (BOOL) hide;
 - (void) setLavcOptsEnabled: (BOOL) lavc;
+- (void) setVideoEncoderName: (NSString *)encoderName;
 - (IBAction) X264AdvancedOptionsAnimate: (id) sender;
 - (IBAction) X264AdvancedOptionsSet: (id) sender;
 - (IBAction) X264AdvancedOptionsStandardizeOptString: (id) sender;

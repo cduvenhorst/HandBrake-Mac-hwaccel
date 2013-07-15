@@ -5138,8 +5138,12 @@ the user is using "Custom" settings by determining the sender*/
         {
             [fAdvancedOptions setLavcOptsEnabled:YES];
         }
-        else /// We are Theora
+        else /// We are Theora, or something else
         {
+            int encoderTag        = [[fVidEncoderPopUp selectedItem] tag];
+            const char *name      = hb_video_encoder_get_name(encoderTag);
+            NSString *encoderName = [NSString stringWithFormat:@"%s", name];
+            [fAdvancedOptions setVideoEncoderName:encoderName];
             [fAdvancedOptions setLavcOptsEnabled:NO];  
         }
     }
