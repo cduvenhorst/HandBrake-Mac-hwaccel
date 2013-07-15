@@ -2800,7 +2800,7 @@ static int HandleEvents( hb_handle_t * h )
 
             hb_job_set_advanced_opts(job, advanced_opts);
 
-            if( twoPass )
+            if (twoPass && job->vcodec != HB_VCODEC_VT_H264)
             {
                 /*
                  * If subtitle_scan is enabled then only turn it on

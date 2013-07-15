@@ -5162,6 +5162,17 @@ the user is using "Custom" settings by determining the sender*/
 
 - (IBAction) twoPassCheckboxChanged: (id) sender
 {
+    /* disable 2-pass for encoders that don't support it */
+    if ([[fVidEncoderPopUp selectedItem] tag] == HB_VCODEC_VT_H264)
+    {
+        [fVidTwoPassCheck setHidden:YES];
+        [fVidTwoPassCheck  setState:NSOffState];
+    }
+    else
+    {
+        [fVidTwoPassCheck setHidden:NO];
+    }
+
 	/* check to see if x264 is chosen */
 	if([[fVidEncoderPopUp selectedItem] tag] == HB_VCODEC_X264)
     {
