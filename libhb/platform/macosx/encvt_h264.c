@@ -36,7 +36,9 @@ struct hb_work_private_s
     int expectedFrameRate;
     struct
     {
+        int maxFrameDelayCount;
         int maxKeyFrameInterval;
+        CFBooleanRef allowFrameReordering;
     }
     settings;
     
@@ -127,9 +129,13 @@ OSStatus initVTSession(hb_work_object_t * w, hb_job_t * job, hb_work_private_t *
     }
     CFNumberRef cfValue = NULL;
     
-    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanTrue);
+    err = VTSessionSetProperty(pv->session,
+                               kVTCompressionPropertyKey_AllowFrameReordering,
+                               pv->settings.allowFrameReordering);
     if (err != noErr)
+    {
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_AllowFrameReordering failed");
+    }
     
     cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
                              &pv->settings.maxKeyFrameInterval);
@@ -142,14 +148,16 @@ OSStatus initVTSession(hb_work_object_t * w, hb_job_t * job, hb_work_private_t *
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_MaxKeyFrameInterval failed");
     }
     
-    const int maxFrameDelayCount = 24;
-    cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &maxFrameDelayCount);
-
-    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_MaxFrameDelayCount, cfValue);
+    cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
+                             &pv->settings.maxFrameDelayCount);
+    err = VTSessionSetProperty(pv->session,
+                               kVTCompressionPropertyKey_MaxFrameDelayCount,
+                               cfValue);
     CFRelease(cfValue);
-
     if (err != noErr)
+    {
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_MaxFrameDelayCount failed");
+    }
     
     cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
                              &pv->expectedFrameRate);
@@ -295,11 +303,19 @@ int encvt_h264Init( hb_work_object_t * w, hb_job_t * job )
 
     pv->job = job;
 
-    // compute the frame rate, keyframe interval and output bit rate
-    pv->expectedFrameRate   = ((double)job->vrate /
-                               (double)job->vrate_base + 0.5);
-    // Quick Sync Video usually works fine with 5-second invervals
-    pv->settings.maxKeyFrameInterval = 5 * pv->expectedFrameRate;
+    /*
+     * Set default settings.
+     * TODO: implement advanced options parsing.
+     *
+     * Compute the frame rate, keyframe interval and output bit rate.
+     *
+     * Note: Quick Sync Video usually works fine with keyframes every 5 seconds.
+     */
+    pv->expectedFrameRate             = ((double)job->vrate /
+                                         (double)job->vrate_base + 0.5);
+    pv->settings.maxFrameDelayCount   = 24;
+    pv->settings.allowFrameReordering = kCFBooleanTrue;
+    pv->settings.maxKeyFrameInterval  = pv->expectedFrameRate * 5;
     if (job->vquality >= 0.0)
     {
         /*
