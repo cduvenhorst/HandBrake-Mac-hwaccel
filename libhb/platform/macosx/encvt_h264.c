@@ -32,8 +32,10 @@ struct hb_work_private_s
     VTCompressionSessionRef session;
     CMSimpleQueueRef queue;
 
+    int h264_profile;
     int averageBitRate;
     int expectedFrameRate;
+    CFStringRef profileLevel;
     struct
     {
         int maxFrameDelayCount;
@@ -44,6 +46,44 @@ struct hb_work_private_s
     
     int            chap_mark;   // saved chap mark when we're propagating it
     int64_t        next_chap;
+};
+
+enum
+{
+    HB_VT_H264_PROFILE_BASELINE = 0,
+    HB_VT_H264_PROFILE_MAIN,
+    HB_VT_H264_PROFILE_HIGH,
+    HB_VT_H264_PROFILE_NB,
+};
+
+struct
+{
+    const char *name;
+    const CFStringRef level[HB_VT_H264_PROFILE_NB];
+}
+hb_vt_h264_levels[] =
+{
+    // TODO: implement automatic level detection
+    { "auto", { CFSTR("H264_Baseline_4_1"), CFSTR("H264_Main_4_1"    ), CFSTR("H264_High_5_0"    ), }, },
+    // support all levels returned by hb_h264_levels()
+    { "1.0",  { CFSTR("H264_Baseline_1_3"), CFSTR("H264_Baseline_1_3"), CFSTR("H264_Baseline_1_3"), }, },
+    { "1b",   { CFSTR("H264_Baseline_1_3"), CFSTR("H264_Baseline_1_3"), CFSTR("H264_Baseline_1_3"), }, },
+    { "1.1",  { CFSTR("H264_Baseline_1_3"), CFSTR("H264_Baseline_1_3"), CFSTR("H264_Baseline_1_3"), }, },
+    { "1.2",  { CFSTR("H264_Baseline_1_3"), CFSTR("H264_Baseline_1_3"), CFSTR("H264_Baseline_1_3"), }, },
+    { "1.3",  { CFSTR("H264_Baseline_1_3"), CFSTR("H264_Baseline_1_3"), CFSTR("H264_Baseline_1_3"), }, },
+    { "2.0",  { CFSTR("H264_Baseline_3_0"), CFSTR("H264_Main_3_0"    ), CFSTR("H264_Main_3_0"    ), }, },
+    { "2.1",  { CFSTR("H264_Baseline_3_0"), CFSTR("H264_Main_3_0"    ), CFSTR("H264_Main_3_0"    ), }, },
+    { "2.2",  { CFSTR("H264_Baseline_3_0"), CFSTR("H264_Main_3_0"    ), CFSTR("H264_Main_3_0"    ), }, },
+    { "3.0",  { CFSTR("H264_Baseline_3_0"), CFSTR("H264_Main_3_0"    ), CFSTR("H264_Main_3_0"    ), }, },
+    { "3.1",  { CFSTR("H264_Baseline_3_1"), CFSTR("H264_Main_3_1"    ), CFSTR("H264_Main_3_1"    ), }, },
+    { "3.2",  { CFSTR("H264_Baseline_3_2"), CFSTR("H264_Main_3_2"    ), CFSTR("H264_Main_3_2"    ), }, },
+    { "4.0",  { CFSTR("H264_Baseline_4_1"), CFSTR("H264_Main_4_0"    ), CFSTR("H264_Main_4_0"    ), }, },
+    { "4.1",  { CFSTR("H264_Baseline_4_1"), CFSTR("H264_Main_4_1"    ), CFSTR("H264_Main_4_1"    ), }, },
+    { "4.2",  { CFSTR("H264_Main_5_0"    ), CFSTR("H264_Main_5_0"    ), CFSTR("H264_High_5_0"    ), }, },
+    { "5.0",  { CFSTR("H264_Main_5_0"    ), CFSTR("H264_Main_5_0"    ), CFSTR("H264_High_5_0"    ), }, },
+    { "5.1",  { CFSTR("H264_Main_5_0"    ), CFSTR("H264_Main_5_0"    ), CFSTR("H264_High_5_0"    ), }, },
+    { "5.2",  { CFSTR("H264_Main_5_0"    ), CFSTR("H264_Main_5_0"    ), CFSTR("H264_High_5_0"    ), }, },
+    { NULL,   { NULL,                       NULL,                       NULL,                       }, },
 };
 
 void pixelBufferReleasePlanarBytesCallback( void *releaseRefCon, const void *dataPtr, size_t dataSize, size_t numberOfPlanes, const void *planeAddresses[] )
@@ -181,9 +221,13 @@ OSStatus initVTSession(hb_work_object_t * w, hb_job_t * job, hb_work_private_t *
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_AverageBitRate failed");
     }
     
-    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Main_4_1);
+    err = VTSessionSetProperty(pv->session,
+                               kVTCompressionPropertyKey_ProfileLevel,
+                               pv->profileLevel);
     if (err != noErr)
+    {
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_ProfileLevel failed");
+    }
 
     CFRelease(encoderSpecifications);
     
@@ -302,6 +346,56 @@ int encvt_h264Init( hb_work_object_t * w, hb_job_t * job )
     w->private_data = pv;
 
     pv->job = job;
+
+    // set the profile and level before initializing the session
+    if (job->h264_profile != NULL && *job->h264_profile != '\0')
+    {
+        if (!strcasecmp(job->h264_profile, "baseline"))
+        {
+            pv->h264_profile = HB_VT_H264_PROFILE_BASELINE;
+        }
+        else if (!strcasecmp(job->h264_profile, "main") ||
+                 !strcasecmp(job->h264_profile, "auto"))
+        {
+            pv->h264_profile = HB_VT_H264_PROFILE_MAIN;
+        }
+        else if (!strcasecmp(job->h264_profile, "high"))
+        {
+            pv->h264_profile = HB_VT_H264_PROFILE_HIGH;
+        }
+        else
+        {
+            hb_error("encvt_h264Init: invalid profile '%s'", job->h264_profile);
+            *job->die = 1;
+            return -1;
+        }
+    }
+    else
+    {
+        pv->h264_profile = HB_VT_H264_PROFILE_MAIN;
+    }
+    if (job->h264_level != NULL && *job->h264_level != '\0')
+    {
+        int i;
+        for (i = 0; hb_vt_h264_levels[i].name != NULL; i++)
+        {
+            if (!strcasecmp(job->h264_level, hb_vt_h264_levels[i].name))
+            {
+                pv->profileLevel = hb_vt_h264_levels[i].level[pv->h264_profile];
+                break;
+            }
+        }
+        if (hb_vt_h264_levels[i].name == NULL)
+        {
+            hb_error("encvt_h264Init: invalid level '%s'", job->h264_level);
+            *job->die = 1;
+            return -1;
+        }
+    }
+    else
+    {
+        pv->profileLevel = hb_vt_h264_levels[0].level[pv->h264_profile];
+    }
 
     /*
      * Set default settings.
