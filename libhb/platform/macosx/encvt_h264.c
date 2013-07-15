@@ -31,6 +31,14 @@ struct hb_work_private_s
 
     VTCompressionSessionRef session;
     CMSimpleQueueRef queue;
+
+    int averageBitRate;
+    int expectedFrameRate;
+    struct
+    {
+        int maxKeyFrameInterval;
+    }
+    settings;
     
     int            chap_mark;   // saved chap mark when we're propagating it
     int64_t        next_chap;
@@ -123,14 +131,16 @@ OSStatus initVTSession(hb_work_object_t * w, hb_job_t * job, hb_work_private_t *
     if (err != noErr)
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_AllowFrameReordering failed");
     
-    const int maxKeyFrameInterval = 10 * 30;
-    cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &maxKeyFrameInterval);
-
-    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_MaxKeyFrameInterval, cfValue);
+    cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
+                             &pv->settings.maxKeyFrameInterval);
+    err = VTSessionSetProperty(pv->session,
+                               kVTCompressionPropertyKey_MaxKeyFrameInterval,
+                               cfValue);
     CFRelease(cfValue);
-    
     if (err != noErr)
+    {
         hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_MaxKeyFrameInterval failed");
+    }
     
     const int maxFrameDelayCount = 24;
     cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &maxFrameDelayCount);
@@ -139,28 +149,28 @@ OSStatus initVTSession(hb_work_object_t * w, hb_job_t * job, hb_work_private_t *
     CFRelease(cfValue);
 
     if (err != noErr)
-        hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_MaxKeyFrameInterval failed");
+        hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_MaxFrameDelayCount failed");
     
-    const int frameRate = (int)( (double)job->vrate / (double)job->vrate_base + 0.5 );
-    cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &frameRate);
-
-    err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_ExpectedFrameRate, cfValue);
+    cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
+                             &pv->expectedFrameRate);
+    err = VTSessionSetProperty(pv->session,
+                               kVTCompressionPropertyKey_ExpectedFrameRate,
+                               cfValue);
     CFRelease(cfValue);
-
     if (err != noErr)
-        hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_ExpectedFrameRate failed");
-
-    
-    if( job->vquality < 0 )
     {
-        const int averageBitRate = job->vbitrate * 1024;
-        cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &averageBitRate);
+        hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_ExpectedFrameRate failed");
+    }
 
-        err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_AverageBitRate, cfValue);
-        CFRelease(cfValue);
-
-        if (err != noErr)
-            hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_AverageBitRate failed");
+    cfValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
+                             &pv->averageBitRate);
+    err = VTSessionSetProperty(pv->session,
+                               kVTCompressionPropertyKey_AverageBitRate,
+                               cfValue);
+    CFRelease(cfValue);
+    if (err != noErr)
+    {
+        hb_log("VTSessionSetProperty: kVTCompressionPropertyKey_AverageBitRate failed");
     }
     
     err = VTSessionSetProperty(pv->session, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Main_4_1);
@@ -284,6 +294,40 @@ int encvt_h264Init( hb_work_object_t * w, hb_job_t * job )
     w->private_data = pv;
 
     pv->job = job;
+
+    // compute the frame rate, keyframe interval and output bit rate
+    pv->expectedFrameRate   = ((double)job->vrate /
+                               (double)job->vrate_base + 0.5);
+    // Quick Sync Video usually works fine with 5-second invervals
+    pv->settings.maxKeyFrameInterval = 5 * pv->expectedFrameRate;
+    if (job->vquality >= 0.0)
+    {
+        /*
+         * XXX: CQP not supported, so let's come up with a "good" bitrate value
+         *
+         * Offset by the width to that vquality == 0.0 doesn't result in 0 Kbps.
+         *
+         * Compression efficiency can be pretty low, so let's be generous:
+         *  720 x  480, 30 fps -> ~2800 Kbps (50%),  ~5800 Kbps (75%)
+         * 1280 x  720, 25 fps -> ~5000 Kbps (50%), ~10400 Kbps (75%)
+         * 1920 x 1080, 24 fps -> ~8800 Kbps (50%), ~18500 Kbps (75%)
+         */
+        double offset      = job->height * 1000.;
+        double quality     = job->vquality * job->vquality / 75.;
+        double properties  = job->height * sqrt(job->width * pv->expectedFrameRate);
+        pv->averageBitRate = properties * quality + offset;
+    }
+    else if (job->vbitrate > 0)
+    {
+        pv->averageBitRate = job->vbitrate * 1000;
+    }
+    else
+    {
+        hb_error("encvt_h264Init: invalid rate control (bitrate %d, quality %f)",
+                 job->vbitrate, job->vquality);
+    }
+    hb_log("encvt_h264Init: encoding with output bitrate %d Kbps",
+           pv->averageBitRate / 1000);
     
     CMSimpleQueueCreate(
                         kCFAllocatorDefault,

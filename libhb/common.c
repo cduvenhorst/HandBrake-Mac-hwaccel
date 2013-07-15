@@ -1101,6 +1101,13 @@ void hb_video_quality_get_limits(uint32_t codec, float *low, float *high,
             *high        = 51.;
             break;
 
+        case HB_VCODEC_VT_H264:
+            *direction   = 0;
+            *granularity = 2.5;
+            *low         = 0.;
+            *high        = 100.;
+            break;
+
         case HB_VCODEC_THEORA:
             *direction   = 0;
             *granularity = 1.;
@@ -1125,6 +1132,9 @@ const char* hb_video_quality_get_name(uint32_t codec)
     {
         case HB_VCODEC_X264:
             return "RF";
+
+        case HB_VCODEC_VT_H264:
+            return "%";
 
         default:
             return "QP";
