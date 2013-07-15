@@ -3857,12 +3857,15 @@ bool one_burned = FALSE;
         job->chapter_markers = 0;
     }
     
-    if (job->vcodec == HB_VCODEC_X264)
+    if (job->vcodec == HB_VCODEC_X264 ||
+        job->vcodec == HB_VCODEC_VT_H264)
     {
         /* iPod 5G atom */
         job->ipod_atom = ([[queueToApply objectForKey:@"Mp4iPodCompatible"]
                            intValue] == 1);
-        
+    }
+    if (job->vcodec == HB_VCODEC_X264)
+    {
         /* set fastfirstpass if 2-pass and Turbo are enabled */
         if ([[queueToApply objectForKey:@"VideoTwoPass"] intValue] == 1)
         {
@@ -5142,7 +5145,8 @@ the user is using "Custom" settings by determining the sender*/
     }
 
 
-    if (videoEncoder != HB_VCODEC_X264)
+    if (videoEncoder != HB_VCODEC_X264 &&
+        videoEncoder != HB_VCODEC_VT_H264)
     {
         /* We set the iPod atom checkbox to disabled and uncheck it as its only for x264 in the mp4
          * container. Format is taken care of in formatPopUpChanged method by hiding and unchecking
