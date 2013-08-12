@@ -191,8 +191,8 @@
                      ToolBar.OverflowMode="Never"
                      ToolBarTray.IsLocked="True"
                      >
-                <Menu Background="Transparent" attachedProperties:DriveMenu.ShowAvailableDrives="true">
-                    <MenuItem ItemsSource="{Binding SourceMenu}">
+                <Menu Background="Transparent">
+                    <MenuItem ItemsSource="{Binding SourceMenu}" attachedProperties:DriveMenu.ShowAvailableDrives="true">
                         <MenuItem.Header>
                             <StackPanel Orientation="Horizontal">
                                 <Image Width="32"
@@ -212,6 +212,7 @@
                                 <Setter Property="ItemsSource" Value="{Binding Children}" />
                                 <Setter Property="Icon" Value="{Binding Image}" />
                                 <Setter Property="InputGestureText" Value="{Binding InputGestureText}" />
+                                <Setter Property="Tag" Value="{Binding}" />
                             </Style>
                         </MenuItem.ItemContainerStyle>
                     </MenuItem>
@@ -466,7 +467,13 @@
                              Margin="8,0,0,0"
                              Text="{Binding Destination,
                                             UpdateSourceTrigger=PropertyChanged}"
-                             />
+                             >
+                        <TextBox.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Open this Directory" Micro:Message.Attach="[Event Click] = [Action OpenDestinationDirectory]" />
+                            </ContextMenu>
+                        </TextBox.ContextMenu>
+                        </TextBox>
                     <Button Name="DestinationBrowser"
                             Grid.Column="2"
                             Margin="8,0,0,0"

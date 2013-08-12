@@ -622,7 +622,7 @@ namespace HandBrakeWPF.ViewModels
             {
                 return new List<OutputFormat>
                     {
-                        OutputFormat.Mp4, OutputFormat.Mkv
+                         OutputFormat.av_mp4, OutputFormat.av_mkv, OutputFormat.Mp4, OutputFormat.Mkv
                     };
             }
         }
@@ -879,7 +879,7 @@ namespace HandBrakeWPF.ViewModels
                 this.NotifyOfPropertyChange(() => SelectedOutputFormat);
                 this.NotifyOfPropertyChange(() => this.CurrentTask.OutputFormat);
                 this.NotifyOfPropertyChange(() => IsMkv);
-                this.SetExtension(string.Format(".{0}", this.selectedOutputFormat.ToString().ToLower())); // TODO, tidy up
+                this.SetExtension(string.Format(".{0}", this.selectedOutputFormat.ToString().Replace("av_", string.Empty).ToLower())); // TODO, tidy up
 
                 this.VideoViewModel.RefreshTask();
                 this.AudioViewModel.RefreshTask();
@@ -1201,7 +1201,7 @@ namespace HandBrakeWPF.ViewModels
         /// </summary>
         public void FileScan()
         {
-            VistaOpenFileDialog dialog = new VistaOpenFileDialog { Filter = "All files (*.*)|*.*" };
+            OpenFileDialog dialog = new OpenFileDialog { Filter = "All files (*.*)|*.*" };
             dialog.ShowDialog();
             this.StartScan(dialog.FileName, 0);
         }
@@ -1233,7 +1233,7 @@ namespace HandBrakeWPF.ViewModels
         /// </summary>
         public void FileScanTitleSpecific()
         {
-            VistaOpenFileDialog dialog = new VistaOpenFileDialog { Filter = "All files (*.*)|*.*" };
+            OpenFileDialog dialog = new OpenFileDialog { Filter = "All files (*.*)|*.*" };
             dialog.ShowDialog();
 
             if (string.IsNullOrEmpty(dialog.FileName))
@@ -1367,7 +1367,7 @@ namespace HandBrakeWPF.ViewModels
         /// </summary>
         public void DebugScanLog()
         {
-            VistaOpenFileDialog dialog = new VistaOpenFileDialog();
+            OpenFileDialog dialog = new OpenFileDialog();
 
             dialog.ShowDialog();
 
@@ -1435,17 +1435,36 @@ namespace HandBrakeWPF.ViewModels
                 switch (Path.GetExtension(saveFileDialog.FileName))
                 {
                     case ".mkv":
-                        this.SelectedOutputFormat = OutputFormat.Mkv;
+                        this.SelectedOutputFormat = OutputFormat.av_mkv;
                         break;
                     case ".mp4":
-                        this.SelectedOutputFormat = OutputFormat.Mp4;
+                        this.SelectedOutputFormat = OutputFormat.av_mp4;
                         break;
                     case ".m4v":
-                        this.SelectedOutputFormat = OutputFormat.M4V;
+                        this.SelectedOutputFormat = OutputFormat.av_mp4;
                         break;
                 }
 
                 this.NotifyOfPropertyChange(() => this.CurrentTask);
+            }
+        }
+
+        /// <summary>
+        /// The open destination directory.
+        /// </summary>
+        public void OpenDestinationDirectory()
+        {
+            if (!string.IsNullOrEmpty(this.Destination))
+            {
+                string directory = Path.GetDirectoryName(this.Destination);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Process.Start(directory);
+                }
+                else
+                {
+                    Process.Start(AppDomain.CurrentDomain.BaseDirectory);
+                }
             }
         }
 
@@ -1525,7 +1544,7 @@ namespace HandBrakeWPF.ViewModels
         /// </summary>
         public void PresetImport()
         {
-            VistaOpenFileDialog dialog = new VistaOpenFileDialog { Filter = "Plist (*.plist)|*.plist", CheckFileExists = true };
+            OpenFileDialog dialog = new OpenFileDialog() { Filter = "Plist (*.plist)|*.plist", CheckFileExists = true };
             dialog.ShowDialog();
             string filename = dialog.FileName;
 
@@ -1571,7 +1590,7 @@ namespace HandBrakeWPF.ViewModels
         /// </summary>
         public void PresetExport()
         {
-            VistaSaveFileDialog savefiledialog = new VistaSaveFileDialog
+            SaveFileDialog savefiledialog = new SaveFileDialog
                                                      {
                                                          Filter = "plist|*.plist",
                                                          CheckPathExists = true,
