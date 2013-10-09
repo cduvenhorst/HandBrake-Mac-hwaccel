@@ -1,0 +1,20 @@
+diff -Naur a52dec/Makefile.am a52dec.clang/Makefile.am
+--- a52dec/Makefile.am	2001-12-17 00:23:45.000000000 +0100
++++ a52dec.clang/Makefile.am	2013-07-05 12:12:17.000000000 +0200
+@@ -1,3 +1,3 @@
+-SUBDIRS = autotools include doc liba52 libao src vc++ test
++SUBDIRS = autotools include doc liba52 vc++ test
+ 
+ EXTRA_DIST = HISTORY bootstrap
+diff -Naur a52dec/Makefile.in a52dec.clang/Makefile.in
+--- a52dec/Makefile.in	2002-07-28 05:50:54.000000000 +0200
++++ a52dec.clang/Makefile.in	2013-07-05 12:12:34.000000000 +0200
+@@ -76,7 +76,7 @@
+ STRIP = @STRIP@
+ VERSION = @VERSION@
+ 
+-SUBDIRS = autotools include doc liba52 libao src vc++ test
++SUBDIRS = autotools include doc liba52 vc++ test
+ 
+ EXTRA_DIST = HISTORY bootstrap
+ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4

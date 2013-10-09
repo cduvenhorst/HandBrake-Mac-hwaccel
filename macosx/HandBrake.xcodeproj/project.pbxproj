@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		226268E01572CC7300477B4E /* libavresample.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 226268DF1572CC7300477B4E /* libavresample.a */; };
 		226268E11572CC7300477B4E /* libavresample.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 226268DF1572CC7300477B4E /* libavresample.a */; };
+		22D1C457170B2EB0002A7BD4 /* OpenCL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 22D1C456170B2EB0002A7BD4 /* OpenCL.framework */; };
+		22D1C458170B2EBD002A7BD4 /* OpenCL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 22D1C456170B2EB0002A7BD4 /* OpenCL.framework */; };
 		273F202314ADB8650021BE6D /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 273F202214ADB8650021BE6D /* IOKit.framework */; };
 		273F202614ADB8A40021BE6D /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 273F202514ADB8A40021BE6D /* libz.dylib */; };
 		273F202814ADB8BE0021BE6D /* libbz2.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 273F202714ADB8BE0021BE6D /* libbz2.dylib */; };
@@ -120,14 +122,11 @@
 		27D6C77314B102DA00B785E4 /* libxml2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 27D6C74014B102DA00B785E4 /* libxml2.a */; };
 		3490BCB41614CF8D002A5AD7 /* HandBrake.icns in Resources */ = {isa = PBXBuildFile; fileRef = 3490BCB31614CF8D002A5AD7 /* HandBrake.icns */; };
 		46AB433515F98A2B009C0961 /* DockTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = 46AB433415F98A2B009C0961 /* DockTextField.m */; };
-		A90156C21770AB9200079F5A /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A90156C11770AB9200079F5A /* VideoToolbox.framework */; };
-		A90156C31770ADCE00079F5A /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A90156C11770AB9200079F5A /* VideoToolbox.framework */; };
-		A94BC59D1770C0110055F56B /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A94BC59C1770C0110055F56B /* CoreMedia.framework */; };
-		A94BC59E1770C0180055F56B /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A94BC59C1770C0110055F56B /* CoreMedia.framework */; };
-		A94BC5A01770C0C00055F56B /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A94BC59F1770C0C00055F56B /* CoreVideo.framework */; };
-		A94BC5A11770C0C70055F56B /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A94BC59F1770C0C00055F56B /* CoreVideo.framework */; };
-		A952E83117742F2600E39FF0 /* VideoDecodeAcceleration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A952E83017742F2600E39FF0 /* VideoDecodeAcceleration.framework */; };
-		A952E83217742F8200E39FF0 /* VideoDecodeAcceleration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A952E83017742F2600E39FF0 /* VideoDecodeAcceleration.framework */; };
+		A660242918059B82007CF70F /* osx109.i386.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = A660242718059B82007CF70F /* osx109.i386.xcconfig */; };
+		A660242A18059B82007CF70F /* osx109.x86_64.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = A660242818059B82007CF70F /* osx109.x86_64.xcconfig */; };
+		A6DA91C9180577F70010E731 /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6DA91C8180577F70010E731 /* VideoToolbox.framework */; };
+		A6DA91CB180578000010E731 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6DA91CA180578000010E731 /* CoreMedia.framework */; };
+		A6DA91CD180578210010E731 /* VideoDecodeAcceleration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6DA91CC180578210010E731 /* VideoDecodeAcceleration.framework */; };
 		A9E1467B16BC2ABD00C307BC /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9E1467A16BC2ABD00C307BC /* QuartzCore.framework */; };
 		A9E1468016BC2AD800C307BC /* next-p.pdf in Resources */ = {isa = PBXBuildFile; fileRef = A9E1467C16BC2AD800C307BC /* next-p.pdf */; };
 		A9E1468116BC2AD800C307BC /* pause-p.pdf in Resources */ = {isa = PBXBuildFile; fileRef = A9E1467D16BC2AD800C307BC /* pause-p.pdf */; };
@@ -203,6 +202,7 @@
 
 /* Begin PBXFileReference section */
 		226268DF1572CC7300477B4E /* libavresample.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libavresample.a; path = external/contrib/lib/libavresample.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		22D1C456170B2EB0002A7BD4 /* OpenCL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenCL.framework; path = System/Library/Frameworks/OpenCL.framework; sourceTree = SDKROOT; };
 		271BA4C014B119F800BC1D2C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; name = Info.plist; path = external/macosx/Info.plist; sourceTree = BUILT_PRODUCTS_DIR; };
 		273F1FFF14ADAE950021BE6D /* HandBrakeCLI */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = HandBrakeCLI; sourceTree = BUILT_PRODUCTS_DIR; };
 		273F202214ADB8650021BE6D /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
@@ -287,6 +287,13 @@
 		277A3FD014AE84C500A835E4 /* osx106.i386.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = osx106.i386.xcconfig; sourceTree = "<group>"; };
 		277A3FD114AE84C500A835E4 /* osx106.x86_64.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = osx106.x86_64.xcconfig; sourceTree = "<group>"; };
 		277A3FD214AE84C500A835E4 /* osx107.x86_64.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = osx107.x86_64.xcconfig; sourceTree = "<group>"; };
+		277EFE8917ED4F5D001D4A6A /* osx108.i386.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = osx108.i386.xcconfig; sourceTree = "<group>"; };
+		277EFE8B17ED4F63001D4A6A /* osx108.x86_64.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = osx108.x86_64.xcconfig; sourceTree = "<group>"; };
+		277EFE8D17ED5628001D4A6A /* supplemental.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = supplemental.xcconfig; sourceTree = "<group>"; };
+		277EFE8F17ED7296001D4A6A /* libmp4v2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libmp4v2.a; path = external/contrib/lib/libmp4v2.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		277EFE9017ED72A1001D4A6A /* libmkv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libmkv.a; path = external/contrib/lib/libmkv.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		277EFE9117ED7749001D4A6A /* libfaac.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libfaac.a; path = external/contrib/lib/libfaac.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		277EFE9217ED799E001D4A6A /* libfdk-aac.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libfdk-aac.a"; path = "../../../../Users/mike/Library/Developer/Xcode/DerivedData/HandBrake-anpxrfhxsejsxehiwuiaexjoygra/Build/Products/debug/external/contrib/lib/libfdk-aac.a"; sourceTree = "<group>"; };
 		27D6C72414B1019100B785E4 /* libhb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libhb.a; path = external/libhb/libhb.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		27D6C72714B102DA00B785E4 /* liba52.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liba52.a; path = external/contrib/lib/liba52.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		27D6C72814B102DA00B785E4 /* libass.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libass.a; path = external/contrib/lib/libass.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -313,10 +320,11 @@
 		34FF2FC014EEC363004C2400 /* HBAdvancedController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HBAdvancedController.h; sourceTree = "<group>"; };
 		46AB433315F98A2B009C0961 /* DockTextField.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DockTextField.h; sourceTree = "<group>"; };
 		46AB433415F98A2B009C0961 /* DockTextField.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DockTextField.m; sourceTree = "<group>"; };
-		A90156C11770AB9200079F5A /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = /System/Library/Frameworks/VideoToolbox.framework; sourceTree = "<absolute>"; };
-		A94BC59C1770C0110055F56B /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = /System/Library/Frameworks/CoreMedia.framework; sourceTree = "<absolute>"; };
-		A94BC59F1770C0C00055F56B /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = /System/Library/Frameworks/CoreVideo.framework; sourceTree = "<absolute>"; };
-		A952E83017742F2600E39FF0 /* VideoDecodeAcceleration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoDecodeAcceleration.framework; path = /System/Library/Frameworks/VideoDecodeAcceleration.framework; sourceTree = "<absolute>"; };
+		A660242718059B82007CF70F /* osx109.i386.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = osx109.i386.xcconfig; sourceTree = "<group>"; };
+		A660242818059B82007CF70F /* osx109.x86_64.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = osx109.x86_64.xcconfig; sourceTree = "<group>"; };
+		A6DA91C8180577F70010E731 /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = System/Library/Frameworks/VideoToolbox.framework; sourceTree = SDKROOT; };
+		A6DA91CA180578000010E731 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
+		A6DA91CC180578210010E731 /* VideoDecodeAcceleration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoDecodeAcceleration.framework; path = System/Library/Frameworks/VideoDecodeAcceleration.framework; sourceTree = SDKROOT; };
 		A9E1467A16BC2ABD00C307BC /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = /System/Library/Frameworks/QuartzCore.framework; sourceTree = "<absolute>"; };
 		A9E1467C16BC2AD800C307BC /* next-p.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "next-p.pdf"; sourceTree = "<group>"; };
 		A9E1467D16BC2AD800C307BC /* pause-p.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "pause-p.pdf"; sourceTree = "<group>"; };
@@ -355,10 +363,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A952E83217742F8200E39FF0 /* VideoDecodeAcceleration.framework in Frameworks */,
-				A94BC5A11770C0C70055F56B /* CoreVideo.framework in Frameworks */,
-				A94BC59D1770C0110055F56B /* CoreMedia.framework in Frameworks */,
-				A90156C31770ADCE00079F5A /* VideoToolbox.framework in Frameworks */,
+				22D1C457170B2EB0002A7BD4 /* OpenCL.framework in Frameworks */,
 				273F203014ADB9790021BE6D /* AudioToolbox.framework in Frameworks */,
 				273F202314ADB8650021BE6D /* IOKit.framework in Frameworks */,
 				273F203314ADB9F00021BE6D /* CoreServices.framework in Frameworks */,
@@ -395,10 +400,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A952E83117742F2600E39FF0 /* VideoDecodeAcceleration.framework in Frameworks */,
-				A94BC5A01770C0C00055F56B /* CoreVideo.framework in Frameworks */,
-				A94BC59E1770C0180055F56B /* CoreMedia.framework in Frameworks */,
-				A90156C21770AB9200079F5A /* VideoToolbox.framework in Frameworks */,
+				A6DA91CD180578210010E731 /* VideoDecodeAcceleration.framework in Frameworks */,
+				A6DA91CB180578000010E731 /* CoreMedia.framework in Frameworks */,
+				A6DA91C9180577F70010E731 /* VideoToolbox.framework in Frameworks */,
+				22D1C458170B2EBD002A7BD4 /* OpenCL.framework in Frameworks */,
 				A9E1467B16BC2ABD00C307BC /* QuartzCore.framework in Frameworks */,
 				273F21C114ADE7A20021BE6D /* Growl.framework in Frameworks */,
 				273F21C214ADE7BC0021BE6D /* Sparkle.framework in Frameworks */,
@@ -479,6 +484,7 @@
 		273F1FDE14AD9DA40021BE6D = {
 			isa = PBXGroup;
 			children = (
+				22D1C456170B2EB0002A7BD4 /* OpenCL.framework */,
 				273F204114ADBC210021BE6D /* HandBrake */,
 				273F200214ADAE950021BE6D /* HandBrakeCLI */,
 				273F200014ADAE950021BE6D /* Products */,
@@ -515,10 +521,9 @@
 		273F203414ADBAC30021BE6D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				A952E83017742F2600E39FF0 /* VideoDecodeAcceleration.framework */,
-				A94BC59F1770C0C00055F56B /* CoreVideo.framework */,
-				A94BC59C1770C0110055F56B /* CoreMedia.framework */,
-				A90156C11770AB9200079F5A /* VideoToolbox.framework */,
+				A6DA91CC180578210010E731 /* VideoDecodeAcceleration.framework */,
+				A6DA91CA180578000010E731 /* CoreMedia.framework */,
+				A6DA91C8180577F70010E731 /* VideoToolbox.framework */,
 				A9E1467A16BC2ABD00C307BC /* QuartzCore.framework */,
 				273F20C714ADC4FF0021BE6D /* QTKit.framework */,
 				273F202F14ADB9790021BE6D /* AudioToolbox.framework */,
@@ -693,13 +698,29 @@
 		277A3FCF14AE848400A835E4 /* xcconfig */ = {
 			isa = PBXGroup;
 			children = (
+				A660242718059B82007CF70F /* osx109.i386.xcconfig */,
+				A660242818059B82007CF70F /* osx109.x86_64.xcconfig */,
 				275916DA14B2AB27007211E9 /* native.xcconfig */,
 				277A3FD014AE84C500A835E4 /* osx106.i386.xcconfig */,
 				277A3FD114AE84C500A835E4 /* osx106.x86_64.xcconfig */,
 				276941FA14B161B70027798C /* osx107.i386.xcconfig */,
 				277A3FD214AE84C500A835E4 /* osx107.x86_64.xcconfig */,
+				277EFE8917ED4F5D001D4A6A /* osx108.i386.xcconfig */,
+				277EFE8B17ED4F63001D4A6A /* osx108.x86_64.xcconfig */,
+				277EFE8D17ED5628001D4A6A /* supplemental.xcconfig */,
 			);
 			path = xcconfig;
+			sourceTree = "<group>";
+		};
+		277EFE8E17ED71A2001D4A6A /* Static Libraries (optional) */ = {
+			isa = PBXGroup;
+			children = (
+				277EFE9117ED7749001D4A6A /* libfaac.a */,
+				277EFE9217ED799E001D4A6A /* libfdk-aac.a */,
+				277EFE9017ED72A1001D4A6A /* libmkv.a */,
+				277EFE8F17ED7296001D4A6A /* libmp4v2.a */,
+			);
+			name = "Static Libraries (optional)";
 			sourceTree = "<group>";
 		};
 		27D6C72314B1013400B785E4 /* Products (external) */ = {
@@ -707,6 +728,7 @@
 			children = (
 				271BA4C914B1238E00BC1D2C /* Support */,
 				271BA4C714B1236D00BC1D2C /* Static Libraries */,
+				277EFE8E17ED71A2001D4A6A /* Static Libraries (optional) */,
 			);
 			name = "Products (external)";
 			sourceTree = "<group>";
@@ -821,6 +843,7 @@
 				273F216714ADCBF80021BE6D /* Reveal.png in Resources */,
 				273F216814ADCBF80021BE6D /* RevealHighlight.png in Resources */,
 				273F216914ADCBF80021BE6D /* RevealHighlightPressed.png in Resources */,
+				A660242A18059B82007CF70F /* osx109.x86_64.xcconfig in Resources */,
 				273F216A14ADCBF80021BE6D /* RevealPressed.png in Resources */,
 				273F218A14ADDDA10021BE6D /* AdvancedView.xib in Resources */,
 				273F218B14ADDDA10021BE6D /* InfoPlist.strings in Resources */,
@@ -853,6 +876,7 @@
 				D2BCB11816F5152C0084604C /* presets@2x.png in Resources */,
 				D2BCB11916F5152C0084604C /* preview.png in Resources */,
 				D2BCB11A16F5152C0084604C /* preview@2x.png in Resources */,
+				A660242918059B82007CF70F /* osx109.i386.xcconfig in Resources */,
 				D2BCB11B16F5152C0084604C /* settings@2x.png in Resources */,
 				D2BCB12316F5154E0084604C /* settings.png in Resources */,
 				D2BCB12416F5154E0084604C /* showqueue.png in Resources */,
@@ -986,7 +1010,7 @@
 /* Begin XCBuildConfiguration section */
 		273F1FE614AD9DA40021BE6D /* debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 275916DA14B2AB27007211E9 /* native.xcconfig */;
+			baseConfigurationReference = A660242818059B82007CF70F /* osx109.x86_64.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				COPY_PHASE_STRIP = NO;
@@ -1001,11 +1025,16 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				OTHER_LDFLAGS = (
+					"-filelist",
+					"$(EXTERNAL_BUILD)/macosx/osl.filelist.txt",
+				);
+				SDKROOT = macosx;
 				SHARED_PRECOMPS_DIR = "$(CONFIGURATION_TEMP_DIR)/PrecompiledHeaders";
 				STRIP_INSTALLED_PRODUCT = NO;
 			};
@@ -1013,7 +1042,7 @@
 		};
 		273F1FE714AD9DA40021BE6D /* release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 275916DA14B2AB27007211E9 /* native.xcconfig */;
+			baseConfigurationReference = A660242818059B82007CF70F /* osx109.x86_64.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				COPY_PHASE_STRIP = YES;
@@ -1024,11 +1053,16 @@
 				EXTERNAL_SRC = ..;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				OTHER_LDFLAGS = (
+					"-filelist",
+					"$(EXTERNAL_BUILD)/macosx/osl.filelist.txt",
+				);
+				SDKROOT = macosx;
 				SHARED_PRECOMPS_DIR = "$(CONFIGURATION_TEMP_DIR)/PrecompiledHeaders";
 				STRIP_INSTALLED_PRODUCT = YES;
 			};

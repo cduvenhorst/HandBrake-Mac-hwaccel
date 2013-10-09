@@ -1,0 +1,21 @@
+diff -Naur mpeg2dec/Makefile.am mpeg2dec.clang/Makefile.am
+--- mpeg2dec/Makefile.am	2008-07-18 16:41:43.000000000 +0200
++++ mpeg2dec.clang/Makefile.am	2013-07-05 12:09:04.000000000 +0200
+@@ -1,4 +1,4 @@
+-SUBDIRS = libmpeg2 include libvo src test vc++
++SUBDIRS = libmpeg2 include test vc++
+ DIST_SUBDIRS = doc $(SUBDIRS)
+ 
+ EXTRA_DIST = bootstrap CodingStyle \
+diff -Naur mpeg2dec/Makefile.in mpeg2dec.clang/Makefile.in
+--- mpeg2dec/Makefile.in	2008-07-18 16:41:56.000000000 +0200
++++ mpeg2dec.clang/Makefile.in	2013-07-05 12:09:18.000000000 +0200
+@@ -200,7 +200,7 @@
+ target_alias = @target_alias@
+ top_builddir = @top_builddir@
+ top_srcdir = @top_srcdir@
+-SUBDIRS = libmpeg2 include libvo src test vc++
++SUBDIRS = libmpeg2 include test vc++
+ DIST_SUBDIRS = doc $(SUBDIRS)
+ EXTRA_DIST = bootstrap CodingStyle \
+     m4/cflags.m4 m4/inttypes.m4 m4/keywords.m4 m4/nonpic.m4

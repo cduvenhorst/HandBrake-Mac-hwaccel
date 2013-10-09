@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>311BF00B-7508-4E31-8123-576CE6B7DF4C</string>
+	<key>IDESourceControlProjectName</key>
+	<string>HandBrake</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>BD5AF3B2-3501-41A1-89DD-31F52D5EBA95</key>
+		<string>git://github.com/cduvenhorst/HandBrake-QuickSync-Mac.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>macosx/HandBrake.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>BD5AF3B2-3501-41A1-89DD-31F52D5EBA95</key>
+		<string>../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>git://github.com/cduvenhorst/HandBrake-QuickSync-Mac.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>110</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>BD5AF3B2-3501-41A1-89DD-31F52D5EBA95</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>BD5AF3B2-3501-41A1-89DD-31F52D5EBA95</string>
+			<key>IDESourceControlWCCName</key>
+			<string>HandBrake-QuickSync-Mac</string>
+		</dict>
+	</array>
+</dict>
+</plist>
