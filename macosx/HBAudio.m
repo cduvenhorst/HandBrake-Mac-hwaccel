@@ -110,7 +110,7 @@ static NSMutableArray *masterBitRateArray = nil;
         // sample rate depends on the track, which means it depends on the title, so cannot be nicely set up here.
         masterSampleRateArray = [[NSMutableArray alloc] init]; // knowingly leaked
         [masterSampleRateArray addObject:[NSDictionary dictionaryWithObjectsAndKeys:
-                                          [NSString stringWithString:@"Auto"], keyAudioSampleRateName,
+                                          @"Auto", keyAudioSampleRateName,
                                           [NSNumber numberWithInt:0],          keyAudioSamplerate,
                                           nil]];
         for (const hb_rate_t *audio_samplerate = hb_audio_samplerate_get_next(NULL);
@@ -279,7 +279,7 @@ static NSMutableArray *masterBitRateArray = nil;
     else if (codecIsLossless)
     {
         NSDictionary *bitRateNotApplicable = [NSDictionary dictionaryWithObjectsAndKeys:
-                                              [NSString stringWithString: @"N/A"], keyAudioBitrateName,
+                                              @"N/A", keyAudioBitrateName,
                                               [NSNumber numberWithInt: -1], keyAudioBitrate,
                                               nil];
         [permittedBitRates addObject: bitRateNotApplicable];

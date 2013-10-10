@@ -153,7 +153,7 @@
     else
     {
         [foreignAudioSearchTrackName release];
-        foreignAudioSearchTrackName = [[NSString stringWithString:@"Foreign Audio Search - (Bitmap)"]
+        foreignAudioSearchTrackName = [@"Foreign Audio Search - (Bitmap)"
                                        retain];
     }
     [forcedSourceNamesArray release];
