@@ -5,36 +5,36 @@
 	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
 	<false/>
 	<key>IDESourceControlProjectIdentifier</key>
-	<string>311BF00B-7508-4E31-8123-576CE6B7DF4C</string>
+	<string>0AFEA5DC-4C9E-432F-B379-9E2C0D460393</string>
 	<key>IDESourceControlProjectName</key>
 	<string>HandBrake</string>
 	<key>IDESourceControlProjectOriginsDictionary</key>
 	<dict>
-		<key>BD5AF3B2-3501-41A1-89DD-31F52D5EBA95</key>
-		<string>git://github.com/cduvenhorst/HandBrake-QuickSync-Mac.git</string>
+		<key>2D85E383-39DB-4167-A8BA-14313E4A3E6E</key>
+		<string>https://github.com/cduvenhorst/HandBrake-VideoToolbox.git</string>
 	</dict>
 	<key>IDESourceControlProjectPath</key>
 	<string>macosx/HandBrake.xcodeproj/project.xcworkspace</string>
 	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
 	<dict>
-		<key>BD5AF3B2-3501-41A1-89DD-31F52D5EBA95</key>
+		<key>2D85E383-39DB-4167-A8BA-14313E4A3E6E</key>
 		<string>../../..</string>
 	</dict>
 	<key>IDESourceControlProjectURL</key>
-	<string>git://github.com/cduvenhorst/HandBrake-QuickSync-Mac.git</string>
+	<string>https://github.com/cduvenhorst/HandBrake-VideoToolbox.git</string>
 	<key>IDESourceControlProjectVersion</key>
 	<integer>110</integer>
 	<key>IDESourceControlProjectWCCIdentifier</key>
-	<string>BD5AF3B2-3501-41A1-89DD-31F52D5EBA95</string>
+	<string>2D85E383-39DB-4167-A8BA-14313E4A3E6E</string>
 	<key>IDESourceControlProjectWCConfigurations</key>
 	<array>
 		<dict>
 			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
 			<string>public.vcs.git</string>
 			<key>IDESourceControlWCCIdentifierKey</key>
-			<string>BD5AF3B2-3501-41A1-89DD-31F52D5EBA95</string>
+			<string>2D85E383-39DB-4167-A8BA-14313E4A3E6E</string>
 			<key>IDESourceControlWCCName</key>
-			<string>HandBrake-QuickSync-Mac</string>
+			<string>HandBrake-VideoToolbox</string>
 		</dict>
 	</array>
 </dict>
