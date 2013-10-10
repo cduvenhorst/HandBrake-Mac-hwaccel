@@ -1010,7 +1010,7 @@
 /* Begin XCBuildConfiguration section */
 		273F1FE614AD9DA40021BE6D /* debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A660242818059B82007CF70F /* osx109.x86_64.xcconfig */;
+			baseConfigurationReference = 275916DA14B2AB27007211E9 /* native.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				COPY_PHASE_STRIP = NO;
@@ -1042,7 +1042,7 @@
 		};
 		273F1FE714AD9DA40021BE6D /* release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A660242818059B82007CF70F /* osx109.x86_64.xcconfig */;
+			baseConfigurationReference = 275916DA14B2AB27007211E9 /* native.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				COPY_PHASE_STRIP = YES;
