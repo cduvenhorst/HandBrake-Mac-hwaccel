@@ -101,6 +101,7 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
     NSImageView *iv = [[NSImageView alloc] init];
     [iv setImage:[[NSApplication sharedApplication] applicationIconImage]];
     [dockTile setContentView:iv];
+    [iv release];
     
     /* We can move the specific values out from here by subclassing NSDockTile and package everything in here */
     /* If colors are to be chosen once and for all, we can also remove the instantiation with numerical values */
@@ -138,7 +139,7 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
     if (filenames.count == 1 && [[filenames objectAtIndex:0] isEqual:@"YES"])
         return;
     
-    NSMutableArray* filesList = [[NSMutableArray alloc] initWithArray:filenames];
+    NSMutableArray *filesList = [[[NSMutableArray alloc] initWithArray:filenames] autorelease];
     [filesList removeObject:@"YES"];
     
     // For now, we just want to accept one file at a time
@@ -843,9 +844,7 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
 {
     
     /* Update UI for fHandle (user scanning instance of libhb ) */
-    
-    hb_list_t  * list;
-    list = hb_get_titles( fHandle );
+
     /* check to see if there has been a new scan done
      this bypasses the constraints of HB_STATE_WORKING
      not allowing setting a newly scanned source */
@@ -992,11 +991,9 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
             
         case HB_STATE_SEARCHING:
 		{
-            NSMutableString * string;
-            NSString * pass_desc;
-            
+            NSMutableString *string;
+
             /* Update text field */
-            pass_desc = @"";
             //string = [NSMutableString stringWithFormat:
             //          NSLocalizedString( @"Searching for start point: pass %d %@ of %d, %.2f %%", @"" ),
             //          p.job_cur, pass_desc, p.job_count, 100.0 * p.progress];
@@ -1292,6 +1289,8 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
             {
                 [[NSUserDefaults standardUserDefaults] removeObjectForKey:dragDropFiles];
             }
+
+            [filesList release];
         }
     }
 }
@@ -1693,8 +1692,9 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
         [[[NSUserDefaults standardUserDefaults] stringForKey:@"AlertWhenDone"] isEqualToString: @"Alert Window And Growl"] )
     {
         /*On Screen Notification*/
-        int status;
-        status = NSRunAlertPanel(@"Put down that cocktail…",@"Your HandBrake queue is done!", @"OK", nil, nil);
+//        NSUInteger status;
+//        status =
+        NSRunAlertPanel(@"Put down that cocktail…",@"Your HandBrake queue is done!", @"OK", nil, nil);
         [NSApp requestUserAttention:NSCriticalRequest];
     }
     
@@ -1702,11 +1702,10 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
     if( [[[NSUserDefaults standardUserDefaults] stringForKey:@"AlertWhenDone"] isEqualToString: @"Put Computer To Sleep"] )
     {
         /* Sleep */
-        NSDictionary* errorDict;
-        NSAppleEventDescriptor* returnDescriptor = nil;
-        NSAppleScript* scriptObject = [[NSAppleScript alloc] initWithSource:
+        NSDictionary *errorDict;
+        NSAppleScript *scriptObject = [[NSAppleScript alloc] initWithSource:
                                        @"tell application \"Finder\" to sleep"];
-        returnDescriptor = [scriptObject executeAndReturnError: &errorDict];
+        [scriptObject executeAndReturnError: &errorDict];
         [scriptObject release];
     }
     /* If Shutdown has been selected */
@@ -1714,10 +1713,9 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
     {
         /* Shut Down */
         NSDictionary* errorDict;
-        NSAppleEventDescriptor* returnDescriptor = nil;
         NSAppleScript* scriptObject = [[NSAppleScript alloc] initWithSource:
                                        @"tell application \"Finder\" to shut down"];
-        returnDescriptor = [scriptObject executeAndReturnError: &errorDict];
+        [scriptObject executeAndReturnError: &errorDict];
         [scriptObject release];
     }
 }
@@ -2181,7 +2179,7 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
             }
             
             /* if we are a stream, select the first title */
-            if (title->type == HB_STREAM_TYPE || title->type == HB_FF_STREAM_TYPE)
+            if (title && (title->type == HB_STREAM_TYPE || title->type == HB_FF_STREAM_TYPE))
             {
                 [fSrcTitlePopUp selectItemAtIndex: 0];
             }
@@ -2321,6 +2319,8 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
 
 - (void) removeQueueFileItem:(int) queueItemToRemove
 {
+
+    //CFRelease(pathsToWatch);
     [QueueFileArray removeObjectAtIndex:queueItemToRemove];
     [self saveQueueFileItem];
 
@@ -2785,8 +2785,6 @@ fWorkingCount = 0;
     [QueueFileArray removeObjectAtIndex:removeIndex];
     [QueueFileArray insertObject:object atIndex:insertIndex];
     [object release];
-        
-    index = [indexSet indexLessThanIndex:index];
 
    /* We save all of the Queue data here 
     * and it also gets sent back to the queue controller*/
@@ -2858,7 +2856,6 @@ fWorkingCount = 0;
      * settings as this is a queue rescan
      */
     NSString *path = scanPath;
-    HBDVDDetector *detector = [HBDVDDetector detectorForPath:path];
 
     if (cancelScanDecrypt == 0)
     {
@@ -6178,21 +6175,6 @@ the user is using "Custom" settings by determining the sender*/
 /* We use this to determine if an item should be expandable */
 - (BOOL)outlineView:(NSOutlineView *)fPresetsOutlineView isItemExpandable:(id)item
 {
-    
-    /* we need to return the count of the array in ChildrenArray for this folder */
-    NSArray *children= nil;
-    if (item == nil)
-    {
-        children = UserPresets;
-    }
-    else
-    {
-        if ([item objectForKey:@"ChildrenArray"])
-        {
-            children = [item objectForKey:@"ChildrenArray"];
-        }
-    }   
-    
     /* To deterimine if an item should show a disclosure triangle
      * we could do it by the children count as so:
      * if ([children count] < 1)
@@ -6202,15 +6184,14 @@ the user is using "Custom" settings by determining the sender*/
      */
     
     /* We need to determine if the item is a folder */
-   if ([[item objectForKey:@"Folder"] intValue] == 1)
-   {
+    if ([[item objectForKey:@"Folder"] intValue] == 1)
+    {
         return YES;
     }
     else
     {
         return NO;
     }
-    
 }
 
 - (BOOL)outlineView:(NSOutlineView *)outlineView shouldExpandItem:(id)item
@@ -6256,14 +6237,11 @@ return YES;
     {
         NSFont *txtFont;
         NSColor *fontColor;
-        NSColor *shadowColor;
         txtFont = [NSFont systemFontOfSize: [NSFont smallSystemFontSize]];
         /*check to see if its a selected row */
         if ([fPresetsOutlineView selectedRow] == [fPresetsOutlineView rowForItem:item])
         {
-            
             fontColor = [NSColor blackColor];
-            shadowColor = [NSColor colorWithDeviceRed:(127.0/255.0) green:(140.0/255.0) blue:(160.0/255.0) alpha:1.0];
         }
         else
         {
@@ -6405,11 +6383,9 @@ return YES;
     /* first, lets see if we are dropping into a folder */
     if ([[fPresetsOutlineView itemAtRow:index] objectForKey:@"Folder"] && [[[fPresetsOutlineView itemAtRow:index] objectForKey:@"Folder"] intValue] == 1) // if its a folder
 	{
-    NSMutableArray *childrenArray = [[NSMutableArray alloc] init];
-    childrenArray = [[fPresetsOutlineView itemAtRow:index] objectForKey:@"ChildrenArray"];
-    [childrenArray addObject:item];
-    [[fPresetsOutlineView itemAtRow:index] setObject:[NSMutableArray arrayWithArray: childrenArray] forKey:@"ChildrenArray"];
-    [childrenArray autorelease];
+        NSMutableArray *childrenArray = [[fPresetsOutlineView itemAtRow:index] objectForKey:@"ChildrenArray"];
+        [childrenArray addObject:item];
+        [[fPresetsOutlineView itemAtRow:index] setObject:[NSMutableArray arrayWithArray: childrenArray] forKey:@"ChildrenArray"];
     }
     else // We are not, so we just move the preset into the existing array 
     {
@@ -6450,8 +6426,6 @@ return YES;
     [array removeObjectAtIndex:removeIndex];
     [array insertObject:object atIndex:insertIndex];
     [object release];
-
-    index = [indexSet indexLessThanIndex:index];
 }
 
 
@@ -6998,9 +6972,10 @@ return YES;
         {
             /* Show an alert window that built in presets will be updated */
             /*On Screen Notification*/
-            int status;
+            //int status;
             NSBeep();
-            status = NSRunAlertPanel(@"HandBrake has determined your built in presets are out of date…",@"HandBrake will now update your built-in presets.", @"OK", nil, nil);
+            //status =
+            NSRunAlertPanel(@"HandBrake has determined your built in presets are out of date…",@"HandBrake will now update your built-in presets.", @"OK", nil, nil);
             [NSApp requestUserAttention:NSCriticalRequest];
         }
         /* when alert is dismissed, go ahead and update the built in presets */
@@ -7289,6 +7264,7 @@ return YES;
         
         
         [preset setObject:[NSMutableArray arrayWithArray: audioListArray] forKey:@"AudioList"];
+        [audioListArray release];
 
         
         /* Temporarily remove subtitles from creating a new preset as it has to be converted over to use the new
@@ -7391,7 +7367,7 @@ return YES;
         {
             [[NSFileManager defaultManager] createFileAtPath:exportPresetsFile contents:nil attributes:nil];
         }
-        NSMutableArray * presetsToExport = [[NSMutableArray alloc] initWithContentsOfFile:exportPresetsFile];
+        NSMutableArray *presetsToExport = [[[NSMutableArray alloc] initWithContentsOfFile:exportPresetsFile] autorelease];
         if (nil == presetsToExport)
         {
             presetsToExport = [[NSMutableArray alloc] init];
@@ -7405,7 +7381,6 @@ return YES;
             [presetsToExport writeToFile:exportPresetsFile atomically:YES];
 
         }
-
     }
 }
 
@@ -7633,7 +7608,6 @@ return YES;
 
 
     NSMutableArray *presetsArrayToMod;
-    NSMutableArray *tempArray;
 
     /* If we are a root level preset, we are modding the UserPresets array */
     if (presetToModLevel == 0)
@@ -7646,7 +7620,6 @@ return YES;
     }
     
     enumerator = [presetsArrayToMod objectEnumerator];
-    tempArray = [NSMutableArray array];
     int iiii = 0;
     while (tempObject = [enumerator nextObject]) 
     {
@@ -7785,16 +7758,17 @@ return YES;
 - (void) browseForChapterFileDone: (NSOpenPanel *) sheet
     returnCode: (int) returnCode contextInfo: (void *) contextInfo
 {
-    NSArray *chaptersArray; /* temp array for chapters */
-	NSMutableArray *chaptersMutableArray; /* temp array for chapters */
-    NSString *chapterName; 	/* temp string from file */
+    NSArray *chaptersArray = nil; /* temp array for chapters */
+	NSMutableArray *chaptersMutableArray = nil; /* temp array for chapters */
+    NSString *chapterName = nil; 	/* temp string from file */
     int chapters, i;
     
     if( returnCode == NSOKButton )  /* if they click OK */
     {	
         chapterName = [[NSString alloc] initWithContentsOfFile:[sheet filename] encoding:NSUTF8StringEncoding error:NULL];
         chaptersArray = [chapterName componentsSeparatedByString:@"\n"];
-        chaptersMutableArray= [chaptersArray mutableCopy];
+        [chapterName release];
+        chaptersMutableArray = [[chaptersArray mutableCopy] autorelease];
 		chapters = [fChapterTitlesDelegate numberOfRowsInTableView:fChapterTable];
         if ([chaptersMutableArray count] > 0)
         { 
@@ -7867,7 +7841,7 @@ return YES;
 {
     NSString *chapterName;      /* pointer for string for later file-writing */
     NSString *chapterTitle;
-    NSError *saveError = [[NSError alloc] init];
+    NSError *saveError = nil;
     int chapters, i;    /* ints for the number of chapters in the table and the loop */
     
     if( returnCode == NSOKButton )   /* if they clicked OK */

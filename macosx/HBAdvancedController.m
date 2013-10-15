@@ -10,9 +10,10 @@
 
 - (id)init
 {
-    [super init];
-    [self loadMyNibFile];
-    
+    if(self = [super init])
+    {
+        [self loadMyNibFile];
+    }
     return self;
 }
 
@@ -1043,7 +1044,7 @@
         {
             /* Otherwise the format is deblock=a,b, where a and b both have an array
                offset of 7 because deblocking values start at -6 instead of at zero. */
-            thisOpt = [NSString stringWithFormat:@"%@=%d,%d",optName, ([fX264optAlphaDeblockPopUp indexOfSelectedItem] != 0) ? [fX264optAlphaDeblockPopUp indexOfSelectedItem]-7 : 0,([fX264optBetaDeblockPopUp indexOfSelectedItem] != 0) ? [fX264optBetaDeblockPopUp indexOfSelectedItem]-7 : 0];
+            thisOpt = [NSString stringWithFormat:@"%@=%ld,%ld",optName, ([fX264optAlphaDeblockPopUp indexOfSelectedItem] != 0) ? [fX264optAlphaDeblockPopUp indexOfSelectedItem]-7 : 0,([fX264optBetaDeblockPopUp indexOfSelectedItem] != 0) ? [fX264optBetaDeblockPopUp indexOfSelectedItem]-7 : 0];
         }
     }
     
@@ -1281,7 +1282,7 @@
     
     NSString * thisOpt = @"";  // The separated option such as "bframes=3"
     NSString * optName = @"";  // The option name such as "bframes"
-    NSString * optValue = @""; // The option value such as "3"
+    //NSString * optValue = @""; // The option value such as "3"
     NSArray *currentOptsArray;
     
     /* Get the current opt string being displayed. */
@@ -1320,7 +1321,7 @@
                    already have at least one option=value pair in them. */
                    
                 optName = [thisOpt substringToIndex:splitOptRange.location];
-                optValue = [thisOpt substringFromIndex:splitOptRange.location + 1];
+                //optValue = [thisOpt substringFromIndex:splitOptRange.location + 1];
 
                 /*If the optNameToChange is found, appropriately change the value or delete it if
                     "Unspecified" is set.*/

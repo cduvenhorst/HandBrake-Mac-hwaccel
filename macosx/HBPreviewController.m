@@ -1328,7 +1328,7 @@
     long long result;
     
     result = time.timeValue / time.timeScale; // second
-    frame = (time.timeValue % time.timeScale) / 100;
+    //frame = (time.timeValue % time.timeScale) / 100;
     
     second = result % 60;
     
@@ -1337,7 +1337,7 @@
     
     result = result / 60; // hour
     hour = result % 24;
-    days = result;
+    //days = result;
     
     smtpeTimeCodeString = [NSString stringWithFormat:@"%02d:%02d:%02d", hour, minute, second]; // hh:mm:ss
     return smtpeTimeCodeString;
@@ -1432,7 +1432,7 @@
     if( frame.size.height < minSize.height )
     {
         frame.size.height = minSize.height;
-        deltaY = frame.size.height - currentSize.height;
+        //deltaY = frame.size.height - currentSize.height;
     }
     /* compare frame to max size of screen */
     

@@ -122,8 +122,6 @@
 		27D6C77314B102DA00B785E4 /* libxml2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 27D6C74014B102DA00B785E4 /* libxml2.a */; };
 		3490BCB41614CF8D002A5AD7 /* HandBrake.icns in Resources */ = {isa = PBXBuildFile; fileRef = 3490BCB31614CF8D002A5AD7 /* HandBrake.icns */; };
 		46AB433515F98A2B009C0961 /* DockTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = 46AB433415F98A2B009C0961 /* DockTextField.m */; };
-		A660242918059B82007CF70F /* osx109.i386.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = A660242718059B82007CF70F /* osx109.i386.xcconfig */; };
-		A660242A18059B82007CF70F /* osx109.x86_64.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = A660242818059B82007CF70F /* osx109.x86_64.xcconfig */; };
 		A6DA91C9180577F70010E731 /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6DA91C8180577F70010E731 /* VideoToolbox.framework */; };
 		A6DA91CB180578000010E731 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6DA91CA180578000010E731 /* CoreMedia.framework */; };
 		A6DA91CD180578210010E731 /* VideoDecodeAcceleration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6DA91CC180578210010E731 /* VideoDecodeAcceleration.framework */; };
@@ -796,7 +794,7 @@
 		273F1FE014AD9DA40021BE6D /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0420;
+				LastUpgradeCheck = 0500;
 			};
 			buildConfigurationList = 273F1FE314AD9DA40021BE6D /* Build configuration list for PBXProject "HandBrake" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -843,7 +841,6 @@
 				273F216714ADCBF80021BE6D /* Reveal.png in Resources */,
 				273F216814ADCBF80021BE6D /* RevealHighlight.png in Resources */,
 				273F216914ADCBF80021BE6D /* RevealHighlightPressed.png in Resources */,
-				A660242A18059B82007CF70F /* osx109.x86_64.xcconfig in Resources */,
 				273F216A14ADCBF80021BE6D /* RevealPressed.png in Resources */,
 				273F218A14ADDDA10021BE6D /* AdvancedView.xib in Resources */,
 				273F218B14ADDDA10021BE6D /* InfoPlist.strings in Resources */,
@@ -876,7 +873,6 @@
 				D2BCB11816F5152C0084604C /* presets@2x.png in Resources */,
 				D2BCB11916F5152C0084604C /* preview.png in Resources */,
 				D2BCB11A16F5152C0084604C /* preview@2x.png in Resources */,
-				A660242918059B82007CF70F /* osx109.i386.xcconfig in Resources */,
 				D2BCB11B16F5152C0084604C /* settings@2x.png in Resources */,
 				D2BCB12316F5154E0084604C /* settings.png in Resources */,
 				D2BCB12416F5154E0084604C /* showqueue.png in Resources */,
@@ -1013,6 +1009,12 @@
 			baseConfigurationReference = 275916DA14B2AB27007211E9 /* native.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				EXTERNAL_BUILD = "$(CONFIGURATION_BUILD_DIR)/external";
 				EXTERNAL_DRIVER = xcode;
@@ -1029,6 +1031,9 @@
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				OTHER_LDFLAGS = (
 					"-filelist",
@@ -1045,6 +1050,12 @@
 			baseConfigurationReference = 275916DA14B2AB27007211E9 /* native.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				EXTERNAL_BUILD = "$(CONFIGURATION_BUILD_DIR)/external";
@@ -1057,6 +1068,9 @@
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				OTHER_LDFLAGS = (
 					"-filelist",
@@ -1103,6 +1117,7 @@
 		273F205414ADBC210021BE6D /* debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
@@ -1125,6 +1140,7 @@
 		273F205514ADBC210021BE6D /* release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
