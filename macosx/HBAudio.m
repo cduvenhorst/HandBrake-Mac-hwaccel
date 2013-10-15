@@ -142,7 +142,7 @@ static NSMutableArray *masterBitRateArray = nil;
 
 {
     NSMutableArray *permittedCodecs = [NSMutableArray array];
-    unsigned int count = [masterCodecArray count];
+    NSUInteger count = [masterCodecArray count];
     NSDictionary *dict;
 
     // First get a list of the permitted codecs based on the internal rules
@@ -199,7 +199,7 @@ static NSMutableArray *masterBitRateArray = nil;
     int currentMixdown;
 
     unsigned long long channelLayout = [[track objectForKey: keyAudioInputChannelLayout] unsignedLongLongValue];
-    unsigned int count               = [masterMixdownArray count];
+    NSUInteger count               = [masterMixdownArray count];
     int codecCodec                   = [[codec objectForKey: keyAudioCodec] intValue];
     int theDefaultMixdown            = hb_mixdown_get_default(codecCodec, channelLayout);
 
@@ -245,7 +245,7 @@ static NSMutableArray *masterBitRateArray = nil;
     int currentBitRate;
     BOOL shouldAdd;
 
-    unsigned int count = [masterBitRateArray count];
+    NSUInteger count = [masterBitRateArray count];
     int trackInputBitRate = [[[self track] objectForKey: keyAudioInputBitrate] intValue];
     int theSampleRate = [[[self sampleRate] objectForKey: keyAudioSamplerate] intValue];
 

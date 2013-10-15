@@ -243,7 +243,7 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
         NSArray *files = [ [NSFileManager defaultManager]  contentsOfDirectoryAtPath: PreviewDirectory error: &error ];
         for( NSString *file in files ) 
         {
-            if( file != @"." && file != @".." ) 
+            if( ![file  isEqual: @"."] && ![file  isEqual: @".."] )
             {
                 [ [NSFileManager defaultManager] removeItemAtPath: [ PreviewDirectory stringByAppendingPathComponent: file ] error: &error ];
                 if( error ) 
