@@ -132,11 +132,10 @@ a timer to avoid interfering with the chain of events that handles the edit. */
     if( row >= 0 && row < [chapterTable numberOfRows] )
     {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED < 1030
-       [chapterTable selectRow:row byExtendingSelection:NO];
+        [chapterTable selectRow:row byExtendingSelection:NO];
 #else
-      [chapterTable selectRowIndexes:[NSIndexSet indexSetWithIndex:row] byExtendingSelection:NO];
+        [chapterTable selectRowIndexes:[NSIndexSet indexSetWithIndex:row] byExtendingSelection:NO];
 #endif
-        
         [chapterTable editColumn:column row:row withEvent:nil select:YES];
     }
 }
