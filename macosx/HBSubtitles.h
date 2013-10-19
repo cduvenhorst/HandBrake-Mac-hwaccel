@@ -10,7 +10,7 @@
 
 
 
-@interface HBSubtitles : NSObject <NSTableViewDataSource> {
+@interface HBSubtitles : NSObject <NSTableViewDelegate, NSTableViewDataSource> {
 hb_title_t                   *fTitle;
 
 NSMutableArray               *subtitleArray; // contains the output subtitle track info
