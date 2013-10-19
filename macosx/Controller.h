@@ -36,7 +36,7 @@ BOOL                        fIsDragging;
 }
 @end
 
-@interface HBController : NSObject <GrowlApplicationBridgeDelegate>
+@interface HBController : NSObject <NSDrawerDelegate,NSToolbarDelegate,GrowlApplicationBridgeDelegate>
 {
     NSImage                      * fApplicationIcon;
     IBOutlet NSWindow            * fWindow;
@@ -304,7 +304,7 @@ BOOL                        fIsDragging;
 
 - (void)     updateUI:                                 (NSTimer*) timer;
 - (void)     enableUI:                                 (bool)     enable;
-- (void)     setupX264PresetsWidgets:                  (id)       sender;
+- (IBAction) setupX264PresetsWidgets:                  (id)       sender;
 - (void)     enableX264Widgets:                        (bool)     enable;
 - (IBAction) updateX264Widgets:                        (id)       sender;
 - (IBAction) x264PresetsChangedDisplayExpandedOptions: (id)       sender;
@@ -407,7 +407,7 @@ BOOL                        fIsDragging;
 /* We use this to determine if an item should be expandable */
 - (BOOL)outlineView:(NSOutlineView *)fPresetsOutlineView isItemExpandable:(id)item;
 /* used to specify the number of levels to show for each item */
-- (int)outlineView:(NSOutlineView *)fPresetsOutlineView numberOfChildrenOfItem:(id)item;
+- (NSInteger)outlineView:(NSOutlineView *)fPresetsOutlineView numberOfChildrenOfItem:(id)item;
 /* Used to tell the outline view which information is to be displayed per item */
 - (id)outlineView:(NSOutlineView *)fPresetsOutlineView objectValueForTableColumn:(NSTableColumn *)tableColumn byItem:(id)item;
 /* Use to customize the font and display characteristics of the title cell */
