@@ -23,7 +23,7 @@ static HBOutputRedirect *g_stderrRedirect = nil;
 /**
  * Function that replaces stdout->_write and forwards stdout to g_stdoutRedirect.
  */
-int	stdoutwrite(void *inFD, const char *buffer, int size)
+static int	stdoutwrite(void *inFD, const char *buffer, int size)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSData *data = [[NSData alloc] initWithBytes:buffer length:size];
@@ -36,7 +36,7 @@ int	stdoutwrite(void *inFD, const char *buffer, int size)
 /**
  * Function that replaces stderr->_write and forwards stderr to g_stderrRedirect.
  */
-int	stderrwrite(void *inFD, const char *buffer, int size)
+static int	stderrwrite(void *inFD, const char *buffer, int size)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSData *data = [[NSData alloc] initWithBytes:buffer length:size];
@@ -54,7 +54,7 @@ int	stderrwrite(void *inFD, const char *buffer, int size)
 + (id)stdoutRedirect
 {
 	if (!g_stdoutRedirect)
-		g_stdoutRedirect = [[HBOutputRedirect alloc] initWithStream:stdout selector:@selector(stdoutRedirect:)];
+		g_stdoutRedirect = [[HBOutputRedirect alloc] initWithStream:stdout selector:@selector(stdoutRedirect)];
 		
 	return g_stdoutRedirect;
 }
@@ -65,7 +65,7 @@ int	stderrwrite(void *inFD, const char *buffer, int size)
 + (id)stderrRedirect
 {
 	if (!g_stderrRedirect)
-		g_stderrRedirect = [[HBOutputRedirect alloc] initWithStream:stderr selector:@selector(stderrRedirect:)];
+		g_stderrRedirect = [[HBOutputRedirect alloc] initWithStream:stderr selector:@selector(stderrRedirect)];
 		
 	return g_stderrRedirect;
 }
