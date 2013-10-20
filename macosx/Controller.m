@@ -3728,7 +3728,7 @@ bool one_burned = FALSE;
     filter = hb_filter_init( HB_FILTER_DEBLOCK );
     if ([fPictureController deblock] != 0)
     {
-        NSString *deblockStringValue = [NSString stringWithFormat: @"%d",[fPictureController deblock]];
+        NSString *deblockStringValue = [NSString stringWithFormat: @"%ld",(long)[fPictureController deblock]];
         hb_add_filter( job, filter, [deblockStringValue UTF8String] );
     }
 
@@ -5910,8 +5910,8 @@ the user is using "Custom" settings by determining the sender*/
         /* Deblock */
         if ([fPictureController deblock] > 0)
         {
-            [summary appendFormat:@" - Deblock (%d)",
-             [fPictureController deblock]];
+            [summary appendFormat:@" - Deblock (%ld)",
+             (long)[fPictureController deblock]];
         }
         
         /* Denoise */
