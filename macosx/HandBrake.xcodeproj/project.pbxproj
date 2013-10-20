@@ -482,7 +482,6 @@
 		273F1FDE14AD9DA40021BE6D = {
 			isa = PBXGroup;
 			children = (
-				22D1C456170B2EB0002A7BD4 /* OpenCL.framework */,
 				273F204114ADBC210021BE6D /* HandBrake */,
 				273F200214ADAE950021BE6D /* HandBrakeCLI */,
 				273F200014ADAE950021BE6D /* Products */,
@@ -519,6 +518,7 @@
 		273F203414ADBAC30021BE6D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				22D1C456170B2EB0002A7BD4 /* OpenCL.framework */,
 				A6DA91CC180578210010E731 /* VideoDecodeAcceleration.framework */,
 				A6DA91CA180578000010E731 /* CoreMedia.framework */,
 				A6DA91C8180577F70010E731 /* VideoToolbox.framework */,
