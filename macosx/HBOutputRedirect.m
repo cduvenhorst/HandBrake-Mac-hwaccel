@@ -23,7 +23,7 @@ static HBOutputRedirect *g_stderrRedirect = nil;
 /**
  * Function that replaces stdout->_write and forwards stdout to g_stdoutRedirect.
  */
-int	stdoutwrite(void *inFD, const char *buffer, int size)
+static int	stdoutwrite(void *inFD, const char *buffer, int size)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSData *data = [[NSData alloc] initWithBytes:buffer length:size];
@@ -36,7 +36,7 @@ int	stdoutwrite(void *inFD, const char *buffer, int size)
 /**
  * Function that replaces stderr->_write and forwards stderr to g_stderrRedirect.
  */
-int	stderrwrite(void *inFD, const char *buffer, int size)
+static int	stderrwrite(void *inFD, const char *buffer, int size)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSData *data = [[NSData alloc] initWithBytes:buffer length:size];
