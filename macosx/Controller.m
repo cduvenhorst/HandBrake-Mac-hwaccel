@@ -1932,7 +1932,7 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
 }
 
 /* Here we actually tell hb_scan to perform the source scan, using the path to source and title number*/
-- (void) performScan:(NSString *) scanPath scanTitleNum: (int) scanTitleNum
+- (void) performScan:(NSString *) scanPath scanTitleNum: (NSInteger) scanTitleNum
 {
     /* use a bool to determine whether or not we can decrypt using vlc */
     BOOL cancelScanDecrypt = 0;
@@ -2042,7 +2042,7 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
         }
         
         hb_system_sleep_prevent(fHandle);
-        hb_scan(fHandle, [path UTF8String], scanTitleNum, hb_num_previews, 1 ,
+        hb_scan(fHandle, [path UTF8String], (int)scanTitleNum, hb_num_previews, 1 ,
                 min_title_duration_ticks);
         
         [fSrcDVD2Field setStringValue:@"Scanning new source…"];
@@ -2316,7 +2316,7 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
     
 }
 
-- (void) removeQueueFileItem:(int) queueItemToRemove
+- (void) removeQueueFileItem:(NSInteger) queueItemToRemove
 {
 
     //CFRelease(pathsToWatch);
@@ -2683,22 +2683,22 @@ fWorkingCount = 0;
 	[queueFileJob setObject:[NSNumber numberWithInt:job->crop[3]] forKey:@"PictureRightCrop"];
     
     /* Picture Filters */
-    [queueFileJob setObject:[NSNumber numberWithInt:[fPictureController detelecine]] forKey:@"PictureDetelecine"];
+    [queueFileJob setObject:[NSNumber numberWithLong:[fPictureController detelecine]] forKey:@"PictureDetelecine"];
     [queueFileJob setObject:[fPictureController detelecineCustomString] forKey:@"PictureDetelecineCustom"];
     
-    [queueFileJob setObject:[NSNumber numberWithInt:[fPictureController useDecomb]] forKey:@"PictureDecombDeinterlace"];
-    [queueFileJob setObject:[NSNumber numberWithInt:[fPictureController decomb]] forKey:@"PictureDecomb"];
+    [queueFileJob setObject:[NSNumber numberWithLong:[fPictureController useDecomb]] forKey:@"PictureDecombDeinterlace"];
+    [queueFileJob setObject:[NSNumber numberWithLong:[fPictureController decomb]] forKey:@"PictureDecomb"];
     [queueFileJob setObject:[fPictureController decombCustomString] forKey:@"PictureDecombCustom"];
     
-    [queueFileJob setObject:[NSNumber numberWithInt:[fPictureController deinterlace]] forKey:@"PictureDeinterlace"];
+    [queueFileJob setObject:[NSNumber numberWithLong:[fPictureController deinterlace]] forKey:@"PictureDeinterlace"];
     [queueFileJob setObject:[fPictureController deinterlaceCustomString] forKey:@"PictureDeinterlaceCustom"];
     
-    [queueFileJob setObject:[NSNumber numberWithInt:[fPictureController denoise]] forKey:@"PictureDenoise"];
+    [queueFileJob setObject:[NSNumber numberWithLong:[fPictureController denoise]] forKey:@"PictureDenoise"];
     [queueFileJob setObject:[fPictureController denoiseCustomString] forKey:@"PictureDenoiseCustom"];
     
-    [queueFileJob setObject:[NSString stringWithFormat:@"%d",[fPictureController deblock]] forKey:@"PictureDeblock"];
+    [queueFileJob setObject:[NSString stringWithFormat:@"%ld",(long)[fPictureController deblock]] forKey:@"PictureDeblock"];
     
-    [queueFileJob setObject:[NSNumber numberWithInt:[fPictureController grayscale]] forKey:@"VideoGrayScale"];
+    [queueFileJob setObject:[NSNumber numberWithLong:[fPictureController grayscale]] forKey:@"VideoGrayScale"];
     
     /* Auto Passthru */
     [queueFileJob setObject:[NSNumber numberWithLong:[fAudioAllowAACPassCheck state]] forKey: @"AudioAllowAACPass"];
@@ -2969,7 +2969,7 @@ fWorkingCount = 0;
 #pragma mark Queue Item Editing
 
 /* Rescans the chosen queue item back into the main window */
-- (void)rescanQueueItemToMainWindow:(NSString *) scanPath scanTitleNum: (int) scanTitleNum selectedQueueItem: (int) selectedQueueItem
+- (void)rescanQueueItemToMainWindow:(NSString *) scanPath scanTitleNum: (NSInteger) scanTitleNum selectedQueueItem: (NSInteger) selectedQueueItem
 {
     fqueueEditRescanItemNum = selectedQueueItem;
     [self writeToActivityLog: "rescanQueueItemToMainWindow: Re-scanning queue item at index:%d",fqueueEditRescanItemNum];
@@ -7237,17 +7237,17 @@ return YES;
         [preset setObject:[NSNumber numberWithInt:job->crop[3]] forKey:@"PictureRightCrop"];
         
         /* Picture Filters */
-        [preset setObject:[NSNumber numberWithInt:[fPictureController useDecomb]] forKey:@"PictureDecombDeinterlace"];
-        [preset setObject:[NSNumber numberWithInt:[fPictureController deinterlace]] forKey:@"PictureDeinterlace"];
+        [preset setObject:[NSNumber numberWithLong:[fPictureController useDecomb]] forKey:@"PictureDecombDeinterlace"];
+        [preset setObject:[NSNumber numberWithLong:[fPictureController deinterlace]] forKey:@"PictureDeinterlace"];
         [preset setObject:[fPictureController deinterlaceCustomString] forKey:@"PictureDeinterlaceCustom"];
-        [preset setObject:[NSNumber numberWithInt:[fPictureController detelecine]] forKey:@"PictureDetelecine"];
+        [preset setObject:[NSNumber numberWithLong:[fPictureController detelecine]] forKey:@"PictureDetelecine"];
         [preset setObject:[fPictureController detelecineCustomString] forKey:@"PictureDetelecineCustom"];
-        [preset setObject:[NSNumber numberWithInt:[fPictureController denoise]] forKey:@"PictureDenoise"];
+        [preset setObject:[NSNumber numberWithLong:[fPictureController denoise]] forKey:@"PictureDenoise"];
         [preset setObject:[fPictureController denoiseCustomString] forKey:@"PictureDenoiseCustom"];
-        [preset setObject:[NSNumber numberWithInt:[fPictureController deblock]] forKey:@"PictureDeblock"]; 
-        [preset setObject:[NSNumber numberWithInt:[fPictureController decomb]] forKey:@"PictureDecomb"];
+        [preset setObject:[NSNumber numberWithLong:[fPictureController deblock]] forKey:@"PictureDeblock"];
+        [preset setObject:[NSNumber numberWithLong:[fPictureController decomb]] forKey:@"PictureDecomb"];
         [preset setObject:[fPictureController decombCustomString] forKey:@"PictureDecombCustom"];
-        [preset setObject:[NSNumber numberWithInt:[fPictureController grayscale]] forKey:@"VideoGrayScale"];
+        [preset setObject:[NSNumber numberWithLong:[fPictureController grayscale]] forKey:@"VideoGrayScale"];
         
         /* Auto Pasthru */
         [preset setObject:[NSNumber numberWithLong:[fAudioAllowAACPassCheck state]] forKey: @"AudioAllowAACPass"];

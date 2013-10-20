@@ -844,7 +844,7 @@ return ![(HBQueueOutlineView*)outlineView isDragging];
         
         /* get our item row number so we an use it to calc how many lines we have to display based
          * on MP4 Options, Filter Options, X264 Options, Audio Tracks and Subtitles from our queue array */
-        int itemRowNum = [outlineView rowForItem: item];
+        NSInteger itemRowNum = [outlineView rowForItem: item];
         NSMutableDictionary *queueItemToCheck = [outlineView itemAtRow: itemRowNum];
         
         /* Check to see if we need to allow for container options */

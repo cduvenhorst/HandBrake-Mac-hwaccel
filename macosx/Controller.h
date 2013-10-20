@@ -265,7 +265,7 @@ BOOL                        fIsDragging;
     int                          fCanceledCount;
     int                          fWorkingCount;
     
-    int                          fqueueEditRescanItemNum; // queue array item to be reloaded into the main window
+    NSInteger                          fqueueEditRescanItemNum; // queue array item to be reloaded into the main window
     int                          pidNum; // The pid number for this instance
     NSString                     * currentQueueEncodeNameString;
     
@@ -296,7 +296,7 @@ BOOL                        fIsDragging;
                 returnCode: (int) returnCode contextInfo: (void *) contextInfo;
 - (IBAction) showSourceTitleScanPanel: (id) sender;
 - (IBAction) closeSourceTitleScanPanel: (id) sender;  
-- (void) performScan:(NSString *) scanPath scanTitleNum: (int) scanTitleNum;
+- (void) performScan:(NSString *) scanPath scanTitleNum: (NSInteger) scanTitleNum;
 - (IBAction) showNewScan: (id) sender;
 
 
@@ -365,10 +365,10 @@ BOOL                        fIsDragging;
 - (void) clearQueueEncodedItems;
 /* Queue Editing */
 - (IBAction)applyQueueSettingsToMainWindow:(id)sender;
-- (IBAction)rescanQueueItemToMainWindow:(NSString *) scanPath scanTitleNum: (int) scanTitleNum selectedQueueItem: (int) selectedQueueItem;
+- (IBAction)rescanQueueItemToMainWindow:(NSString *) scanPath scanTitleNum: (NSInteger) scanTitleNum selectedQueueItem: (NSInteger) selectedQueueItem;
 
 
-- (void) removeQueueFileItem:(int) queueItemToRemove;
+- (void) removeQueueFileItem:(NSInteger) queueItemToRemove;
 - (void) clearQueueAllItems;
 - (void)moveObjectsInQueueArray:(NSMutableArray *)array fromIndexes:(NSIndexSet *)indexSet toIndex:(NSUInteger)insertIndex;
 - (void)getQueueStats;
