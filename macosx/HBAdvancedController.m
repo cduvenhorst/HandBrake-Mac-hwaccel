@@ -25,22 +25,11 @@
 
 - (BOOL) loadMyNibFile
 {
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED < 1080
     if(![NSBundle loadNibNamed:@"AdvancedView" owner:self])
     {
         NSLog(@"Warning! Could not load myNib file.\n");
         return NO;
     }
-#else
-    NSBundle *hbMainBundle = [NSBundle mainBundle];
-    if(![hbMainBundle loadNibNamed:@"AdvancedView" owner:self topLevelObjects:nil])
-    {
-        NSLog(@"Warning! Could not load myNib file.\n");
-        return NO;
-    }
-#endif
-    
     
     return YES;
 }
