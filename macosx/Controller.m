@@ -85,7 +85,7 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
     outputPanel = [[HBOutputPanelController alloc] init];
     fPictureController = [[PictureController alloc] init];
     fQueueController = [[HBQueueController alloc] init];
-    fAdvancedOptions = [[HBAdvancedController alloc] init];
+    fAdvancedOptions = [[HBAdvancedController alloc] initWithNibName:@"AdvancedView" bundle:[NSBundle mainBundle]];
     /* we init the HBPresets class which currently is only used
      * for updating built in presets, may move more functionality
      * there in the future
@@ -593,7 +593,7 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
     [fWindow center];
     [fWindow setExcludedFromWindowsMenu:NO];
     
-    [fAdvancedOptions setView:fAdvancedView];
+    [fAdvancedView setContentView:fAdvancedOptions.view];
     
     /* lets setup our presets drawer for drag and drop here */
     [fPresetsOutlineView registerForDraggedTypes: [NSArray arrayWithObject:DragDropSimplePboardType] ];
@@ -5119,11 +5119,11 @@ the user is using "Custom" settings by determining the sender*/
     
     int videoEncoder = (int)[[fVidEncoderPopUp selectedItem] tag];
     
-    [fAdvancedOptions setHidden:YES];
+    [fAdvancedOptions showAdvancedX264Options:YES];
     /* If we are using x264 then show the x264 advanced panel and the x264 presets box */
     if (videoEncoder == HB_VCODEC_X264)
     {
-        [fAdvancedOptions setHidden:NO];
+        [fAdvancedOptions showAdvancedX264Options:YES];
         
         // show the x264 presets box
         [fX264PresetsBox setHidden:NO];
@@ -5132,7 +5132,7 @@ the user is using "Custom" settings by determining the sender*/
     }
     else // we are FFmpeg (lavc) or Theora
     {
-        [fAdvancedOptions setHidden:YES];
+        [fAdvancedOptions showAdvancedX264Options:NO];
         [fX264PresetsBox setHidden:YES];
         
         // We Are Lavc
@@ -5149,7 +5149,8 @@ the user is using "Custom" settings by determining the sender*/
             [fAdvancedOptions setLavcOptsEnabled:NO];  
         }
     }
-
+    
+    [fAdvancedView setContentView:fAdvancedOptions.view];
 
     if (videoEncoder != HB_VCODEC_X264 &&
         videoEncoder != HB_VCODEC_VT_H264)

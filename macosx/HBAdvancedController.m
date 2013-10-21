@@ -8,30 +8,10 @@
 
 @implementation HBAdvancedController
 
-- (id)init
-{
-    if(self = [super init])
-    {
-        [self loadMyNibFile];
-    }
-    return self;
-}
 
-- (void) setView: (NSBox *) box
+- (void)awakeFromNib
 {
-    fOptionsBox = box;
-    [fOptionsBox setContentView:fX264optView];
-}
-
-- (BOOL) loadMyNibFile
-{
-    if(![NSBundle loadNibNamed:@"AdvancedView" owner:self])
-    {
-        NSLog(@"Warning! Could not load myNib file.\n");
-        return NO;
-    }
-    
-    return YES;
+    [self setView:fX264optView];
 }
 
 - (NSString *) optionsString
@@ -55,15 +35,15 @@
     [fDisplayLavcOptions setStringValue:string];
 }
 
-- (void) setHidden: (BOOL) hide
+- (void) showAdvancedX264Options:(BOOL)show;
 {
-    if(hide)
+    if(!show)
     {
-        [fOptionsBox setContentView:fEmptyView];
+        [self setView:fEmptyView];
     }
     else
     {
-        [fOptionsBox setContentView:fX264optView];
+        [self setView:fX264optView];
     }
     return;
 }
