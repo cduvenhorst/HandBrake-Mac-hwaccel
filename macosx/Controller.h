@@ -265,8 +265,8 @@ BOOL                        fIsDragging;
     int                          fCanceledCount;
     int                          fWorkingCount;
     
-    NSInteger                          fqueueEditRescanItemNum; // queue array item to be reloaded into the main window
-    int                          pidNum; // The pid number for this instance
+    NSInteger                      fqueueEditRescanItemNum; // queue array item to be reloaded into the main window
+    pid_t                          pidNum; // The pid number for this instance
     NSString                     * currentQueueEncodeNameString;
     
     /* integer to set to determine the previous state

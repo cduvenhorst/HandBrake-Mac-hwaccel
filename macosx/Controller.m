@@ -2243,7 +2243,7 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
 {
     if( returnCode == NSOKButton )
     {
-        [fDstFile2Field setStringValue: [sheet filename]];
+        [fDstFile2Field setStringValue: [[sheet URL] path]];
         /* Save this path to the prefs so that on next browse destination window it opens there */
         NSString *destinationDirectory = [[fDstFile2Field stringValue] stringByDeletingLastPathComponent];
         [[NSUserDefaults standardUserDefaults] setObject:destinationDirectory forKey:@"LastDestinationDirectory"];   
@@ -2526,7 +2526,7 @@ fWorkingCount = 0;
     [queueFileJob setObject:[NSString stringWithUTF8String: title->path] forKey:@"SourcePath"];
     [queueFileJob setObject:[fSrcDVD2Field stringValue] forKey:@"SourceName"];
     [queueFileJob setObject:[NSNumber numberWithInt:title->index] forKey:@"TitleNumber"];
-    [queueFileJob setObject:[NSNumber numberWithLong:[fSrcAnglePopUp indexOfSelectedItem] + 1] forKey:@"TitleAngle"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fSrcAnglePopUp indexOfSelectedItem] + 1] forKey:@"TitleAngle"];
     
     /* Determine and set a variable to tell hb what start and stop times to use (chapters, seconds or frames) */
     if( [fEncodeStartStopPopUp indexOfSelectedItem] == 0 )
@@ -2542,8 +2542,8 @@ fWorkingCount = 0;
         [queueFileJob setObject:[NSNumber numberWithInt:2] forKey:@"fEncodeStartStop"];
     }
     /* Chapter encode info */
-    [queueFileJob setObject:[NSNumber numberWithLong:[fSrcChapterStartPopUp indexOfSelectedItem] + 1] forKey:@"ChapterStart"];
-    [queueFileJob setObject:[NSNumber numberWithLong:[fSrcChapterEndPopUp indexOfSelectedItem] + 1] forKey:@"ChapterEnd"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fSrcChapterStartPopUp indexOfSelectedItem] + 1] forKey:@"ChapterStart"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fSrcChapterEndPopUp indexOfSelectedItem] + 1] forKey:@"ChapterEnd"];
     /* Time (pts) encode info */
     [queueFileJob setObject:[NSNumber numberWithInt:[fSrcTimeStartEncodingField intValue]] forKey:@"StartSeconds"];
     [queueFileJob setObject:[NSNumber numberWithInt:[fSrcTimeEndEncodingField intValue] - [fSrcTimeStartEncodingField intValue]] forKey:@"StopSeconds"];
@@ -2560,7 +2560,7 @@ fWorkingCount = 0;
     
     /* Lets get the preset info if there is any */
     [queueFileJob setObject:[fPresetSelectedDisplay stringValue] forKey:@"PresetName"];
-    [queueFileJob setObject:[NSNumber numberWithLong:[fPresetsOutlineView selectedRow]] forKey:@"PresetIndexNum"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fPresetsOutlineView selectedRow]] forKey:@"PresetIndexNum"];
     
     [queueFileJob setObject:[fDstFormatPopUp titleOfSelectedItem] forKey:@"FileFormat"];
     /* Chapter Markers*/
@@ -2573,7 +2573,7 @@ fWorkingCount = 0;
     }
     else
     {
-        [queueFileJob setObject:[NSNumber numberWithLong:[fCreateChapterMarkers state]] forKey:@"ChapterMarkers"];
+        [queueFileJob setObject:[NSNumber numberWithInteger:[fCreateChapterMarkers state]] forKey:@"ChapterMarkers"];
     }
 	
     /* We need to get the list of chapter names to put into an array and store 
@@ -2583,11 +2583,11 @@ fWorkingCount = 0;
     [queueFileJob setObject:[fChapterTitlesDelegate chapterTitlesArray] forKey:@"ChapterNames"];
     
     /* Allow Mpeg4 64 bit formatting +4GB file sizes */
-	[queueFileJob setObject:[NSNumber numberWithLong:[fDstMp4LargeFileCheck state]] forKey:@"Mp4LargeFile"];
+	[queueFileJob setObject:[NSNumber numberWithInteger:[fDstMp4LargeFileCheck state]] forKey:@"Mp4LargeFile"];
     /* Mux mp4 with http optimization */
-    [queueFileJob setObject:[NSNumber numberWithLong:[fDstMp4HttpOptFileCheck state]] forKey:@"Mp4HttpOptimize"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fDstMp4HttpOptFileCheck state]] forKey:@"Mp4HttpOptimize"];
     /* Add iPod uuid atom */
-    [queueFileJob setObject:[NSNumber numberWithLong:[fDstMp4iPodFileCheck state]] forKey:@"Mp4iPodCompatible"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fDstMp4iPodFileCheck state]] forKey:@"Mp4iPodCompatible"];
     
     /* Codecs */
 	/* Video encoder */
@@ -2614,7 +2614,7 @@ fWorkingCount = 0;
     /* FFmpeg (lavc) Option String */
     [queueFileJob setObject:[fAdvancedOptions optionsStringLavc] forKey:@"lavcOption"];
 
-	[queueFileJob setObject:[NSNumber numberWithLong:[[fVidQualityMatrix selectedCell] tag] + 1] forKey:@"VideoQualityType"];
+	[queueFileJob setObject:[NSNumber numberWithInteger:[[fVidQualityMatrix selectedCell] tag] + 1] forKey:@"VideoQualityType"];
 	[queueFileJob setObject:[fVidBitrateField stringValue] forKey:@"VideoAvgBitrate"];
 	[queueFileJob setObject:[NSNumber numberWithFloat:[fVidQualityRFField floatValue]] forKey:@"VideoQualitySlider"];
     /* Framerate */
@@ -2639,9 +2639,9 @@ fWorkingCount = 0;
     
     
 	/* 2 Pass Encoding */
-	[queueFileJob setObject:[NSNumber numberWithLong:[fVidTwoPassCheck state]] forKey:@"VideoTwoPass"];
+	[queueFileJob setObject:[NSNumber numberWithInteger:[fVidTwoPassCheck state]] forKey:@"VideoTwoPass"];
 	/* Turbo 2 pass Encoding fVidTurboPassCheck*/
-	[queueFileJob setObject:[NSNumber numberWithLong:[fVidTurboPassCheck state]] forKey:@"VideoTurboTwoPass"];
+	[queueFileJob setObject:[NSNumber numberWithInteger:[fVidTurboPassCheck state]] forKey:@"VideoTurboTwoPass"];
     
 	/* Picture Sizing */
 	/* Use Max Picture settings for whatever the dvd is.*/
@@ -2683,33 +2683,33 @@ fWorkingCount = 0;
 	[queueFileJob setObject:[NSNumber numberWithInt:job->crop[3]] forKey:@"PictureRightCrop"];
     
     /* Picture Filters */
-    [queueFileJob setObject:[NSNumber numberWithLong:[fPictureController detelecine]] forKey:@"PictureDetelecine"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fPictureController detelecine]] forKey:@"PictureDetelecine"];
     [queueFileJob setObject:[fPictureController detelecineCustomString] forKey:@"PictureDetelecineCustom"];
     
-    [queueFileJob setObject:[NSNumber numberWithLong:[fPictureController useDecomb]] forKey:@"PictureDecombDeinterlace"];
-    [queueFileJob setObject:[NSNumber numberWithLong:[fPictureController decomb]] forKey:@"PictureDecomb"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fPictureController useDecomb]] forKey:@"PictureDecombDeinterlace"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fPictureController decomb]] forKey:@"PictureDecomb"];
     [queueFileJob setObject:[fPictureController decombCustomString] forKey:@"PictureDecombCustom"];
     
-    [queueFileJob setObject:[NSNumber numberWithLong:[fPictureController deinterlace]] forKey:@"PictureDeinterlace"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fPictureController deinterlace]] forKey:@"PictureDeinterlace"];
     [queueFileJob setObject:[fPictureController deinterlaceCustomString] forKey:@"PictureDeinterlaceCustom"];
     
-    [queueFileJob setObject:[NSNumber numberWithLong:[fPictureController denoise]] forKey:@"PictureDenoise"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fPictureController denoise]] forKey:@"PictureDenoise"];
     [queueFileJob setObject:[fPictureController denoiseCustomString] forKey:@"PictureDenoiseCustom"];
     
     [queueFileJob setObject:[NSString stringWithFormat:@"%ld",(long)[fPictureController deblock]] forKey:@"PictureDeblock"];
     
-    [queueFileJob setObject:[NSNumber numberWithLong:[fPictureController grayscale]] forKey:@"VideoGrayScale"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fPictureController grayscale]] forKey:@"VideoGrayScale"];
     
     /* Auto Passthru */
-    [queueFileJob setObject:[NSNumber numberWithLong:[fAudioAllowAACPassCheck state]] forKey: @"AudioAllowAACPass"];
-    [queueFileJob setObject:[NSNumber numberWithLong:[fAudioAllowAC3PassCheck state]] forKey: @"AudioAllowAC3Pass"];
-    [queueFileJob setObject:[NSNumber numberWithLong:[fAudioAllowDTSHDPassCheck state]] forKey: @"AudioAllowDTSHDPass"];
-    [queueFileJob setObject:[NSNumber numberWithLong:[fAudioAllowDTSPassCheck state]] forKey: @"AudioAllowDTSPass"];
-    [queueFileJob setObject:[NSNumber numberWithLong:[fAudioAllowMP3PassCheck state]] forKey: @"AudioAllowMP3Pass"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fAudioAllowAACPassCheck state]] forKey: @"AudioAllowAACPass"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fAudioAllowAC3PassCheck state]] forKey: @"AudioAllowAC3Pass"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fAudioAllowDTSHDPassCheck state]] forKey: @"AudioAllowDTSHDPass"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fAudioAllowDTSPassCheck state]] forKey: @"AudioAllowDTSPass"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fAudioAllowMP3PassCheck state]] forKey: @"AudioAllowMP3Pass"];
     // just in case we need it for display purposes
     [queueFileJob setObject:[fAudioFallbackPopUp titleOfSelectedItem] forKey: @"AudioEncoderFallback"];
     // actual fallback encoder
-    [queueFileJob setObject:[NSNumber numberWithLong:[[fAudioFallbackPopUp selectedItem] tag]] forKey: @"JobAudioEncoderFallback"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[[fAudioFallbackPopUp selectedItem] tag]] forKey: @"JobAudioEncoderFallback"];
     
     /* Audio */
     [fAudioDelegate prepareAudioForQueueFileJob: queueFileJob];
@@ -2721,19 +2721,19 @@ fWorkingCount = 0;
 
     /* Now we go ahead and set the "job->values in the plist for passing right to fQueueEncodeLibhb */
      
-    [queueFileJob setObject:[NSNumber numberWithLong:[fSrcChapterStartPopUp indexOfSelectedItem] + 1] forKey:@"JobChapterStart"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fSrcChapterStartPopUp indexOfSelectedItem] + 1] forKey:@"JobChapterStart"];
     
-    [queueFileJob setObject:[NSNumber numberWithLong:[fSrcChapterEndPopUp indexOfSelectedItem] + 1] forKey:@"JobChapterEnd"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fSrcChapterEndPopUp indexOfSelectedItem] + 1] forKey:@"JobChapterEnd"];
     
     
-    [queueFileJob setObject:[NSNumber numberWithLong:[[fDstFormatPopUp selectedItem] tag]] forKey:@"JobFileFormatMux"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[[fDstFormatPopUp selectedItem] tag]] forKey:@"JobFileFormatMux"];
     
     /* Codecs */
 	/* Video encoder */
-	[queueFileJob setObject:[NSNumber numberWithLong:[[fVidEncoderPopUp selectedItem] tag]] forKey:@"JobVideoEncoderVcodec"];
+	[queueFileJob setObject:[NSNumber numberWithInteger:[[fVidEncoderPopUp selectedItem] tag]] forKey:@"JobVideoEncoderVcodec"];
 	
     /* Framerate */
-    [queueFileJob setObject:[NSNumber numberWithLong:[fVidRatePopUp indexOfSelectedItem]] forKey:@"JobIndexVideoFramerate"];
+    [queueFileJob setObject:[NSNumber numberWithInteger:[fVidRatePopUp indexOfSelectedItem]] forKey:@"JobIndexVideoFramerate"];
     [queueFileJob setObject:[NSNumber numberWithInt:title->rate]                         forKey:@"JobVrate"];
     [queueFileJob setObject:[NSNumber numberWithInt:title->rate_base]                    forKey:@"JobVrateBase"];
 	
@@ -7127,20 +7127,20 @@ return YES;
         /*Get the whether or not to apply pic Size and Cropping (includes Anamorphic)*/
         [preset setObject:[NSNumber numberWithInteger:[[fPresetNewPicSettingsPopUp selectedItem] tag]] forKey:@"UsesPictureSettings"];
         /* Get whether or not to use the current Picture Filter settings for the preset */
-        [preset setObject:[NSNumber numberWithLong:[fPresetNewPicFiltersCheck state]] forKey:@"UsesPictureFilters"];
+        [preset setObject:[NSNumber numberWithInteger:[fPresetNewPicFiltersCheck state]] forKey:@"UsesPictureFilters"];
 
         /* Get New Preset Description from the field in the AddPresetPanel*/
         [preset setObject:[fPresetNewDesc stringValue] forKey:@"PresetDescription"];
         /* File Format */
         [preset setObject:[fDstFormatPopUp titleOfSelectedItem] forKey:@"FileFormat"];
         /* Chapter Markers fCreateChapterMarkers*/
-        [preset setObject:[NSNumber numberWithLong:[fCreateChapterMarkers state]] forKey:@"ChapterMarkers"];
+        [preset setObject:[NSNumber numberWithInteger:[fCreateChapterMarkers state]] forKey:@"ChapterMarkers"];
         /* Allow Mpeg4 64 bit formatting +4GB file sizes */
-        [preset setObject:[NSNumber numberWithLong:[fDstMp4LargeFileCheck state]] forKey:@"Mp4LargeFile"];
+        [preset setObject:[NSNumber numberWithInteger:[fDstMp4LargeFileCheck state]] forKey:@"Mp4LargeFile"];
         /* Mux mp4 with http optimization */
-        [preset setObject:[NSNumber numberWithLong:[fDstMp4HttpOptFileCheck state]] forKey:@"Mp4HttpOptimize"];
+        [preset setObject:[NSNumber numberWithInteger:[fDstMp4HttpOptFileCheck state]] forKey:@"Mp4HttpOptimize"];
         /* Add iPod uuid atom */
-        [preset setObject:[NSNumber numberWithLong:[fDstMp4iPodFileCheck state]] forKey:@"Mp4iPodCompatible"];
+        [preset setObject:[NSNumber numberWithInteger:[fDstMp4iPodFileCheck state]] forKey:@"Mp4iPodCompatible"];
         
         /* Codecs */
         /* Video encoder */
@@ -7183,7 +7183,7 @@ return YES;
         /* though there are actually only 0 - 1 types available in the ui we need to map to the old 0 - 2
          * set of indexes from when we had 0 == Target , 1 == Abr and 2 == Constant Quality for presets
          * to take care of any legacy presets. */
-        [preset setObject:[NSNumber numberWithLong:[[fVidQualityMatrix selectedCell] tag] +1 ] forKey:@"VideoQualityType"];
+        [preset setObject:[NSNumber numberWithInteger:[[fVidQualityMatrix selectedCell] tag] +1 ] forKey:@"VideoQualityType"];
         [preset setObject:[fVidBitrateField stringValue] forKey:@"VideoAvgBitrate"];
         [preset setObject:[NSNumber numberWithFloat:[fVidQualityRFField floatValue]] forKey:@"VideoQualitySlider"];
         
@@ -7216,9 +7216,9 @@ return YES;
 
         
         /* 2 Pass Encoding */
-        [preset setObject:[NSNumber numberWithLong:[fVidTwoPassCheck state]] forKey:@"VideoTwoPass"];
+        [preset setObject:[NSNumber numberWithInteger:[fVidTwoPassCheck state]] forKey:@"VideoTwoPass"];
         /* Turbo 2 pass Encoding fVidTurboPassCheck*/
-        [preset setObject:[NSNumber numberWithLong:[fVidTurboPassCheck state]] forKey:@"VideoTurboTwoPass"];
+        [preset setObject:[NSNumber numberWithInteger:[fVidTurboPassCheck state]] forKey:@"VideoTurboTwoPass"];
         /*Picture Settings*/
         hb_job_t * job = fTitle->job;
         
@@ -7238,24 +7238,24 @@ return YES;
         [preset setObject:[NSNumber numberWithInt:job->crop[3]] forKey:@"PictureRightCrop"];
         
         /* Picture Filters */
-        [preset setObject:[NSNumber numberWithLong:[fPictureController useDecomb]] forKey:@"PictureDecombDeinterlace"];
-        [preset setObject:[NSNumber numberWithLong:[fPictureController deinterlace]] forKey:@"PictureDeinterlace"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController useDecomb]] forKey:@"PictureDecombDeinterlace"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController deinterlace]] forKey:@"PictureDeinterlace"];
         [preset setObject:[fPictureController deinterlaceCustomString] forKey:@"PictureDeinterlaceCustom"];
-        [preset setObject:[NSNumber numberWithLong:[fPictureController detelecine]] forKey:@"PictureDetelecine"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController detelecine]] forKey:@"PictureDetelecine"];
         [preset setObject:[fPictureController detelecineCustomString] forKey:@"PictureDetelecineCustom"];
-        [preset setObject:[NSNumber numberWithLong:[fPictureController denoise]] forKey:@"PictureDenoise"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController denoise]] forKey:@"PictureDenoise"];
         [preset setObject:[fPictureController denoiseCustomString] forKey:@"PictureDenoiseCustom"];
-        [preset setObject:[NSNumber numberWithLong:[fPictureController deblock]] forKey:@"PictureDeblock"];
-        [preset setObject:[NSNumber numberWithLong:[fPictureController decomb]] forKey:@"PictureDecomb"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController deblock]] forKey:@"PictureDeblock"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController decomb]] forKey:@"PictureDecomb"];
         [preset setObject:[fPictureController decombCustomString] forKey:@"PictureDecombCustom"];
-        [preset setObject:[NSNumber numberWithLong:[fPictureController grayscale]] forKey:@"VideoGrayScale"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController grayscale]] forKey:@"VideoGrayScale"];
         
         /* Auto Pasthru */
-        [preset setObject:[NSNumber numberWithLong:[fAudioAllowAACPassCheck state]] forKey: @"AudioAllowAACPass"];
-        [preset setObject:[NSNumber numberWithLong:[fAudioAllowAC3PassCheck state]] forKey: @"AudioAllowAC3Pass"];
-        [preset setObject:[NSNumber numberWithLong:[fAudioAllowDTSHDPassCheck state]] forKey: @"AudioAllowDTSHDPass"];
-        [preset setObject:[NSNumber numberWithLong:[fAudioAllowDTSPassCheck state]] forKey: @"AudioAllowDTSPass"];
-        [preset setObject:[NSNumber numberWithLong:[fAudioAllowMP3PassCheck state]] forKey: @"AudioAllowMP3Pass"];
+        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowAACPassCheck state]] forKey: @"AudioAllowAACPass"];
+        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowAC3PassCheck state]] forKey: @"AudioAllowAC3Pass"];
+        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowDTSHDPassCheck state]] forKey: @"AudioAllowDTSHDPass"];
+        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowDTSPassCheck state]] forKey: @"AudioAllowDTSPass"];
+        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowMP3PassCheck state]] forKey: @"AudioAllowMP3Pass"];
         [preset setObject:[fAudioFallbackPopUp titleOfSelectedItem] forKey: @"AudioEncoderFallback"];
         
         /* Audio */
