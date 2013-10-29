@@ -180,9 +180,10 @@
 {
     if( returnCode == NSOKButton )
     {
-        NSString *sendToAppPath = [[sheet filenames] objectAtIndex: 0];
-        NSString *sendToAppDirectory = [sendToAppPath stringByDeletingLastPathComponent];
-        [[NSUserDefaults standardUserDefaults] setObject:sendToAppDirectory forKey:@"LastSendToAppDirectory"];
+
+        NSURL *sendToAppPath = [[sheet URLs] objectAtIndex: 0];
+        NSURL *sendToAppDirectory = [sendToAppPath URLByDeletingLastPathComponent];
+        [[NSUserDefaults standardUserDefaults] setObject:[sendToAppDirectory path] forKey:@"LastSendToAppDirectory"];
         [sheet orderOut: self];
         NSString *sendToAppName;
         sendToAppName = [[sendToAppPath lastPathComponent] stringByDeletingPathExtension];
