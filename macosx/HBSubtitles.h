@@ -32,7 +32,7 @@ int                           container;
 - (NSDictionary *)createSubtitleTrack;
 - (NSMutableArray*) getSubtitleArray;
 // Add an srt file
-- (void)createSubtitleSrtTrack:(NSString *)filePath;
+- (void)createSubtitleSrtTrack:(NSURL *)filePath;
 
 - (void)containerChanged:(int) newContainer;
 
