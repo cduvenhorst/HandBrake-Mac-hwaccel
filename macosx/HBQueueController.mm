@@ -240,7 +240,7 @@ static NSString*    HBQueuePauseResumeToolbarIdentifier       = @"HBQueuePauseRe
     fHBController = controller;
 }
 
-- (void)setPidNum: (int)myPidnum
+- (void)setPidNum: (pid_t)myPidnum
 {
     pidNum = myPidnum;
     [fHBController writeToActivityLog: "HBQueueController : My Pidnum is %d", pidNum];
