@@ -55,7 +55,6 @@ struct hb_work_private_s
 
     uint32_t       frames_in;
     uint32_t       frames_out;
-    uint32_t       frames_split; // number of frames we had to split
     int            chap_mark;   // saved chap mark when we're propagating it
     int64_t        last_stop;   // Debugging - stop time of previous input frame
     int64_t        next_chap;
@@ -230,9 +229,6 @@ int encx264Init( hb_work_object_t * w, hb_job_t * job )
     {
         param.vui.i_sar_width  = job->anamorphic.par_width;
         param.vui.i_sar_height = job->anamorphic.par_height;
-
-        hb_log( "encx264: encoding with stored aspect %d/%d",
-                param.vui.i_sar_width, param.vui.i_sar_height );
     }
 
     if( job->vquality >= 0 )
@@ -240,13 +236,14 @@ int encx264Init( hb_work_object_t * w, hb_job_t * job )
         /* Constant RF */
         param.rc.i_rc_method = X264_RC_CRF;
         param.rc.f_rf_constant = job->vquality;
-        hb_log( "encx264: Encoding at constant RF %f", param.rc.f_rf_constant );
+        hb_log( "encx264: encoding at constant RF %f", param.rc.f_rf_constant );
     }
     else
     {
         /* Average bitrate */
         param.rc.i_rc_method = X264_RC_ABR;
         param.rc.i_bitrate = job->vbitrate;
+        hb_log( "encx264: encoding at average bitrate %d", param.rc.i_bitrate );
         if( job->pass > 0 && job->pass < 3 )
         {
             memset( pv->filename, 0, 1024 );
@@ -306,6 +303,19 @@ int encx264Init( hb_work_object_t * w, hb_job_t * job )
         job->areBframes = 1;
     }
     
+    /* Log the unparsed x264 options string. */
+    char *x264_opts_unparsed = hb_x264_param_unparse( job->x264_preset,
+                                                      job->x264_tune,
+                                                      job->advanced_opts,
+                                                      job->h264_profile,
+                                                      job->h264_level,
+                                                      job->width, job->height );
+    if( x264_opts_unparsed != NULL )
+    {
+        hb_log( "encx264: unparsed options: %s", x264_opts_unparsed );
+    }
+    free( x264_opts_unparsed );
+
     hb_deep_log( 2, "encx264: opening libx264 (pass %d)", job->pass );
     pv->x264 = x264_encoder_open( &param );
     if ( pv->x264 == NULL )
@@ -347,11 +357,6 @@ void encx264Close( hb_work_object_t * w )
 {
     hb_work_private_t * pv = w->private_data;
 
-    if ( pv->frames_split )
-    {
-        hb_log( "encx264: %u frames had to be split (%u in, %u out)",
-                pv->frames_split, pv->frames_in, pv->frames_out );
-    }
     free( pv->grey_data );
     x264_encoder_close( pv->x264 );
     free( pv );
