@@ -73,15 +73,19 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
     if( ![[NSFileManager defaultManager] fileExistsAtPath:AppSupportDirectory] )
     {
         [[NSFileManager defaultManager] createDirectoryAtPath:AppSupportDirectory
-                                                   attributes:nil];
+                                  withIntermediateDirectories:YES
+                                                   attributes:nil
+                                                        error:nil];
     }
     /* Check for and create the App Support Preview directory if necessary */
     NSString *PreviewDirectory = [AppSupportDirectory stringByAppendingPathComponent:@"Previews"];
     if( ![[NSFileManager defaultManager] fileExistsAtPath:PreviewDirectory] )
     {
         [[NSFileManager defaultManager] createDirectoryAtPath:PreviewDirectory
-                                                   attributes:nil];
-    }                                                            
+                                  withIntermediateDirectories:YES
+                                                   attributes:nil
+                                                        error:nil];
+    }
     outputPanel = [[HBOutputPanelController alloc] init];
     fPictureController = [[PictureController alloc] init];
     fQueueController = [[HBQueueController alloc] init];
@@ -410,15 +414,17 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
 /* hbInstances checks to see if other instances of HB are running and also sets the pid for this instance for multi-instance queue encoding */
  
  /* Note for now since we are in early phases of multi-instance I have put in quite a bit of logging. Can be removed as we see fit. */
-- (int) hbInstances
+- (NSUInteger) hbInstances
 {
     /* check to see if another instance of HandBrake.app is running */
+    NSUInteger hbInstances = 0;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
     NSArray *runningAppDictionaries = [[NSWorkspace sharedWorkspace] launchedApplications];
     NSDictionary *runningAppsDictionary;
-    int hbInstances = 0;
+    
     NSString * thisInstanceAppPath = [[NSBundle mainBundle] bundlePath];
     NSString * runningInstanceAppPath;
-    int runningInstancePidNum;
+    pid_t runningInstancePidNum;
     [self writeToActivityLog: "hbInstances path to this instance: %s", [thisInstanceAppPath UTF8String]];
     for (runningAppsDictionary in runningAppDictionaries)
 	{
@@ -443,7 +449,16 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
             hbInstances++;
         }
     }
-    return hbInstances;
+#else
+    NSRunningApplication *ego = [NSRunningApplication currentApplication];
+    
+    [fQueueController setPidNum:[ego processIdentifier]];
+    
+    NSArray *hbInstancesArray = [NSRunningApplication runningApplicationsWithBundleIdentifier:[ego bundleIdentifier]];
+    hbInstances = [hbInstancesArray count];
+    
+#endif
+        return hbInstances;
 }
 
 - (int) getPidnum
@@ -1743,9 +1758,9 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
     [panel setCanChooseFiles: YES];
     [panel setCanChooseDirectories: YES ];
     NSString * sourceDirectory;
-	if ([[NSUserDefaults standardUserDefaults] stringForKey:@"LastSourceDirectory"])
+	if ([[NSUserDefaults standardUserDefaults] stringForKey:@"LastSourceDirectoryURL"])
 	{
-		sourceDirectory = [[NSUserDefaults standardUserDefaults] stringForKey:@"LastSourceDirectory"];
+		sourceDirectory = [[NSUserDefaults standardUserDefaults] stringForKey:@"LastSourceDirectoryURL"];
 	}
 	else
 	{
@@ -1775,10 +1790,10 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
             /* Free display name allocated previously by this code */
         [browsedSourceDisplayName release];
        
-        NSString *scanPath = [[sheet filenames] objectAtIndex: 0];
+        NSURL *scanURL = [[sheet URLs] objectAtIndex: 0];
         /* we set the last searched source directory in the prefs here */
-        NSString *sourceDirectory = [scanPath stringByDeletingLastPathComponent];
-        [[NSUserDefaults standardUserDefaults] setObject:sourceDirectory forKey:@"LastSourceDirectory"];
+        NSURL *sourceDirectory = [scanURL URLByDeletingLastPathComponent];
+        [[NSUserDefaults standardUserDefaults] setURL:sourceDirectory forKey:@"LastSourceDirectoryURL"];
         /* we order out sheet, which is the browse window as we need to open
          * the title selection sheet right away
          */
@@ -1792,19 +1807,19 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
              * purposes in the title panel
              */
             /* Full Path */
-            [fScanSrcTitlePathField setStringValue:scanPath];
+            [fScanSrcTitlePathField setStringValue:[scanURL path]];
             NSString *displayTitlescanSourceName;
 
-            if ([[scanPath lastPathComponent] isEqualToString: @"VIDEO_TS"])
+            if ([[scanURL lastPathComponent] isEqualToString: @"VIDEO_TS"])
             {
                 /* If VIDEO_TS Folder is chosen, choose its parent folder for the source display name
                  we have to use the title->path value so we get the proper name of the volume if a physical dvd is the source*/
-                displayTitlescanSourceName = [[scanPath stringByDeletingLastPathComponent] lastPathComponent];
+                displayTitlescanSourceName = [[scanURL URLByDeletingLastPathComponent] lastPathComponent];
             }
             else
             {
                 /* if not the VIDEO_TS Folder, we can assume the chosen folder is the source name */
-                displayTitlescanSourceName = [scanPath lastPathComponent];
+                displayTitlescanSourceName = [scanURL lastPathComponent];
             }
             /* we set the source display name in the title selection dialogue */
             [fSrcDsplyNameTitleScan setStringValue:displayTitlescanSourceName];
@@ -1818,21 +1833,21 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
         else
         {
             /* We are just doing a standard full source scan, so we specify "0" to libhb */
-            NSString *path = [[sheet filenames] objectAtIndex: 0];
+            NSURL *url = [[sheet URLs] objectAtIndex: 0];
             
             /* We check to see if the chosen file at path is a package */
-            if ([[NSWorkspace sharedWorkspace] isFilePackageAtPath:path])
+            if ([[NSWorkspace sharedWorkspace] isFilePackageAtPath:[url path]])
             {
-                [self writeToActivityLog: "trying to open a package at: %s", [path UTF8String]];
+                [self writeToActivityLog: "trying to open a package at: %s", [[url path] UTF8String]];
                 /* We check to see if this is an .eyetv package */
-                if ([[path pathExtension] isEqualToString: @"eyetv"])
+                if ([[url pathExtension] isEqualToString: @"eyetv"])
                 {
                     [self writeToActivityLog:"trying to open eyetv package"];
                     /* We're looking at an EyeTV package - try to open its enclosed
                      .mpg media file */
-                     browsedSourceDisplayName = [[[path stringByDeletingPathExtension] lastPathComponent] retain];
+                     browsedSourceDisplayName = [[[url URLByDeletingPathExtension] lastPathComponent] retain];
                     NSString *mpgname;
-                    NSUInteger n = [[path stringByAppendingString: @"/"]
+                    NSUInteger n = [[[url path ]stringByAppendingString: @"/"]
                              completePathIntoString: &mpgname caseSensitive: YES
                              matchesIntoArray: nil
                              filterTypes: [NSArray arrayWithObject: @"mpg"]];
@@ -1840,9 +1855,8 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
                     {
                         /* Found an mpeg inside the eyetv package, make it our scan path 
                         and call performScan on the enclosed mpeg */
-                        path = mpgname;
                         [self writeToActivityLog:"found mpeg in eyetv package"];
-                        [self performScan:path scanTitleNum:0];
+                        [self performScan:mpgname scanTitleNum:0];
                     }
                     else
                     {
@@ -1851,12 +1865,12 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
                     }
                 }
                 /* We check to see if this is a .dvdmedia package */
-                else if ([[path pathExtension] isEqualToString: @"dvdmedia"])
+                else if ([[url pathExtension] isEqualToString: @"dvdmedia"])
                 {
                     /* path IS a package - but dvdmedia packages can be treaded like normal directories */
-                    browsedSourceDisplayName = [[[path stringByDeletingPathExtension] lastPathComponent] retain];
+                    browsedSourceDisplayName = [[[url URLByDeletingPathExtension] lastPathComponent] retain];
                     [self writeToActivityLog:"trying to open dvdmedia package"];
-                    [self performScan:path scanTitleNum:0];
+                    [self performScan:[url path] scanTitleNum:0];
                 }
                 else
                 {
@@ -1867,21 +1881,21 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
             else // path is not a package, so we treat it as a dvd parent folder or VIDEO_TS folder
             {
                 /* path is not a package, so we call perform scan directly on our file */
-                if ([[path lastPathComponent] isEqualToString: @"VIDEO_TS"])
+                if ([[url lastPathComponent] isEqualToString: @"VIDEO_TS"])
                 {
                     [self writeToActivityLog:"trying to open video_ts folder (video_ts folder chosen)"];
                     /* If VIDEO_TS Folder is chosen, choose its parent folder for the source display name*/
-                    browsedSourceDisplayName = [[[path stringByDeletingLastPathComponent] lastPathComponent] retain];
+                    browsedSourceDisplayName = [[[url URLByDeletingLastPathComponent] lastPathComponent] retain];
                 }
                 else
                 {
                     [self writeToActivityLog:"trying to open video_ts folder (parent directory chosen)"];
                     /* if not the VIDEO_TS Folder, we can assume the chosen folder is the source name */
                     /* make sure we remove any path extension as this can also be an '.mpg' file */
-                    browsedSourceDisplayName = [[path lastPathComponent] retain];
+                    browsedSourceDisplayName = [[url lastPathComponent] retain];
                 }
                 applyQueueToScan = NO;
-                [self performScan:path scanTitleNum:0];
+                [self performScan:[url path] scanTitleNum:0];
             }
 
         }
@@ -2289,7 +2303,9 @@ static NSString *        ChooseSourceIdentifier             = @"Choose Source It
     /* We check for the Queue.plist */
 	if ([fileManager fileExistsAtPath:QueueFile] == 0)
 	{
-		[fileManager createFileAtPath:QueueFile contents:nil attributes:nil];
+		[fileManager createFileAtPath:QueueFile
+                             contents:nil
+                           attributes:nil];
 	}
     
 	QueueFileArray = [[NSMutableArray alloc] initWithContentsOfFile:QueueFile];
@@ -6025,9 +6041,10 @@ the user is using "Custom" settings by determining the sender*/
 {
     if( returnCode == NSOKButton )
     {
-        NSString *importSrtDirectory = [[sheet filename] stringByDeletingLastPathComponent];
-        NSString *importSrtFilePath = [sheet filename];
-        [[NSUserDefaults standardUserDefaults] setObject:importSrtDirectory forKey:@"LastSrtImportDirectory"];
+        NSURL *importSrtFilePath = [sheet URL];
+        NSURL *importSrtDirectory = [importSrtFilePath URLByDeletingLastPathComponent];
+        [[NSUserDefaults standardUserDefaults] setURL:importSrtDirectory
+                                               forKey:@"LastSrtImportDirectory"];
         
         /* now pass the string off to fSubtitlesDelegate to add the srt file to the dropdown */
         [fSubtitlesDelegate createSubtitleSrtTrack:importSrtFilePath];
@@ -7105,63 +7122,87 @@ return YES;
 {
     NSMutableDictionary *preset = [[NSMutableDictionary alloc] init];
     /* Preset build number */
-    [preset setObject:[NSString stringWithFormat: @"%d", [[[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"] intValue]] forKey:@"PresetBuildNumber"];
-    [preset setObject:[fPresetNewName stringValue] forKey:@"PresetName"];
+    [preset setObject:[NSString stringWithFormat: @"%d", [[[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"] intValue]]
+               forKey:@"PresetBuildNumber"];
+    [preset setObject:[fPresetNewName stringValue]
+               forKey:@"PresetName"];
 	/* Get the New Preset Name from the field in the AddPresetPanel */
-    [preset setObject:[fPresetNewName stringValue] forKey:@"PresetName"];
+    [preset setObject:[fPresetNewName stringValue]
+               forKey:@"PresetName"];
     /* Set whether or not this is to be a folder fPresetNewFolderCheck*/
-    [preset setObject:[NSNumber numberWithBool:[fPresetNewFolderCheck state]] forKey:@"Folder"];
+    [preset setObject:[NSNumber numberWithBool:[fPresetNewFolderCheck state]]
+               forKey:@"Folder"];
 	/*Set whether or not this is a user preset or factory 0 is factory, 1 is user*/
-	[preset setObject:[NSNumber numberWithInt:1] forKey:@"Type"];
+	[preset setObject:[NSNumber numberWithInt:1]
+               forKey:@"Type"];
 	/*Set whether or not this is default, at creation set to 0*/
-	[preset setObject:[NSNumber numberWithInt:0] forKey:@"Default"];
+	[preset setObject:[NSNumber numberWithInt:0]
+               forKey:@"Default"];
     if ([fPresetNewFolderCheck state] == YES)
     {
         /* initialize and set an empty array for children here since we are a new folder */
         NSMutableArray *childrenArray = [[NSMutableArray alloc] init];
-        [preset setObject:[NSMutableArray arrayWithArray: childrenArray] forKey:@"ChildrenArray"];
+        [preset setObject:[NSMutableArray arrayWithArray: childrenArray]
+                   forKey:@"ChildrenArray"];
         [childrenArray autorelease];
     }
     else // we are not creating a preset folder, so we go ahead with the rest of the preset info
     {
         /*Get the whether or not to apply pic Size and Cropping (includes Anamorphic)*/
-        [preset setObject:[NSNumber numberWithInteger:[[fPresetNewPicSettingsPopUp selectedItem] tag]] forKey:@"UsesPictureSettings"];
+        [preset setObject:[NSNumber numberWithInteger:[[fPresetNewPicSettingsPopUp selectedItem] tag]]
+                   forKey:@"UsesPictureSettings"];
         /* Get whether or not to use the current Picture Filter settings for the preset */
-        [preset setObject:[NSNumber numberWithInteger:[fPresetNewPicFiltersCheck state]] forKey:@"UsesPictureFilters"];
+        [preset setObject:[NSNumber numberWithInteger:[fPresetNewPicFiltersCheck state]]
+                   forKey:@"UsesPictureFilters"];
 
         /* Get New Preset Description from the field in the AddPresetPanel*/
-        [preset setObject:[fPresetNewDesc stringValue] forKey:@"PresetDescription"];
+        [preset setObject:[fPresetNewDesc stringValue]
+                   forKey:@"PresetDescription"];
         /* File Format */
-        [preset setObject:[fDstFormatPopUp titleOfSelectedItem] forKey:@"FileFormat"];
+        [preset setObject:[fDstFormatPopUp titleOfSelectedItem]
+                   forKey:@"FileFormat"];
         /* Chapter Markers fCreateChapterMarkers*/
-        [preset setObject:[NSNumber numberWithInteger:[fCreateChapterMarkers state]] forKey:@"ChapterMarkers"];
+        [preset setObject:[NSNumber numberWithInteger:[fCreateChapterMarkers state]]
+                   forKey:@"ChapterMarkers"];
         /* Allow Mpeg4 64 bit formatting +4GB file sizes */
-        [preset setObject:[NSNumber numberWithInteger:[fDstMp4LargeFileCheck state]] forKey:@"Mp4LargeFile"];
+        [preset setObject:[NSNumber numberWithInteger:[fDstMp4LargeFileCheck state]]
+                   forKey:@"Mp4LargeFile"];
         /* Mux mp4 with http optimization */
-        [preset setObject:[NSNumber numberWithInteger:[fDstMp4HttpOptFileCheck state]] forKey:@"Mp4HttpOptimize"];
+        [preset setObject:[NSNumber numberWithInteger:[fDstMp4HttpOptFileCheck state]]
+                   forKey:@"Mp4HttpOptimize"];
         /* Add iPod uuid atom */
-        [preset setObject:[NSNumber numberWithInteger:[fDstMp4iPodFileCheck state]] forKey:@"Mp4iPodCompatible"];
+        [preset setObject:[NSNumber numberWithInteger:[fDstMp4iPodFileCheck state]]
+                   forKey:@"Mp4iPodCompatible"];
         
         /* Codecs */
         /* Video encoder */
-        [preset setObject:[fVidEncoderPopUp titleOfSelectedItem] forKey:@"VideoEncoder"];
+        [preset setObject:[fVidEncoderPopUp titleOfSelectedItem]
+                   forKey:@"VideoEncoder"];
         /* x264 Options, this will either be advanced panel or the video tabs x264 presets panel with modded option string */
         
         if ([fX264UseAdvancedOptionsCheck state] == NSOnState)
         {
             /* use the old advanced panel */
-            [preset setObject:[NSNumber numberWithInt:1]       forKey:@"x264UseAdvancedOptions"];
-            [preset setObject:[fAdvancedOptions optionsString] forKey:@"x264Option"];
+            [preset setObject:[NSNumber numberWithInt:1]
+                       forKey:@"x264UseAdvancedOptions"];
+            [preset setObject:[fAdvancedOptions optionsString]
+                       forKey:@"x264Option"];
         }
         else
         {
             /* use the x264 preset system */
-            [preset setObject:[NSNumber numberWithInt:0] forKey:@"x264UseAdvancedOptions"];
-            [preset setObject:[self x264Preset]          forKey:@"x264Preset"];
-            [preset setObject:[self x264Tune]            forKey:@"x264Tune"];
-            [preset setObject:[self x264OptionExtra]     forKey:@"x264OptionExtra"];
-            [preset setObject:[self h264Profile]         forKey:@"h264Profile"];
-            [preset setObject:[self h264Level]           forKey:@"h264Level"];
+            [preset setObject:[NSNumber numberWithInt:0]
+                       forKey:@"x264UseAdvancedOptions"];
+            [preset setObject:[self x264Preset]
+                       forKey:@"x264Preset"];
+            [preset setObject:[self x264Tune]
+                       forKey:@"x264Tune"];
+            [preset setObject:[self x264OptionExtra]
+                       forKey:@"x264OptionExtra"];
+            [preset setObject:[self h264Profile]
+                       forKey:@"h264Profile"];
+            [preset setObject:[self h264Level]
+                       forKey:@"h264Level"];
             /*
              * bonus: set the unparsed options to make the preset compatible
              * with old HB versions
@@ -7173,32 +7214,40 @@ return YES;
             }
             else
             {
-                [preset setObject:@"" forKey:@"x264Option"];
+                [preset setObject:@""
+                           forKey:@"x264Option"];
             }
         }
 
         /* FFmpeg (lavc) Option String */
-        [preset setObject:[fAdvancedOptions optionsStringLavc] forKey:@"lavcOption"];
+        [preset setObject:[fAdvancedOptions optionsStringLavc]
+                   forKey:@"lavcOption"];
         
         /* though there are actually only 0 - 1 types available in the ui we need to map to the old 0 - 2
          * set of indexes from when we had 0 == Target , 1 == Abr and 2 == Constant Quality for presets
          * to take care of any legacy presets. */
-        [preset setObject:[NSNumber numberWithInteger:[[fVidQualityMatrix selectedCell] tag] +1 ] forKey:@"VideoQualityType"];
-        [preset setObject:[fVidBitrateField stringValue] forKey:@"VideoAvgBitrate"];
-        [preset setObject:[NSNumber numberWithFloat:[fVidQualityRFField floatValue]] forKey:@"VideoQualitySlider"];
+        [preset setObject:[NSNumber numberWithInteger:[[fVidQualityMatrix selectedCell] tag] +1 ]
+                   forKey:@"VideoQualityType"];
+        [preset setObject:[fVidBitrateField stringValue]
+                   forKey:@"VideoAvgBitrate"];
+        [preset setObject:[NSNumber numberWithFloat:[fVidQualityRFField floatValue]]
+                   forKey:@"VideoQualitySlider"];
         
         /* Video framerate and framerate mode */
         if ([fFramerateMatrix selectedRow] == 1)
         {
-            [preset setObject:@"cfr" forKey:@"VideoFramerateMode"];
+            [preset setObject:@"cfr"
+                       forKey:@"VideoFramerateMode"];
         }
         if ([fVidRatePopUp indexOfSelectedItem] == 0) // Same as source is selected
         {
-            [preset setObject:@"Same as source" forKey:@"VideoFramerate"];
+            [preset setObject:@"Same as source"
+                       forKey:@"VideoFramerate"];
             
             if ([fFramerateMatrix selectedRow] == 0)
             {
-                [preset setObject:@"vfr" forKey:@"VideoFramerateMode"];
+                [preset setObject:@"vfr"
+                           forKey:@"VideoFramerateMode"];
             }
         }
         else // translate the rate (selected item's tag) to the official libhb name
@@ -7209,61 +7258,89 @@ return YES;
             
             if ([fFramerateMatrix selectedRow] == 0)
             {
-                [preset setObject:@"pfr" forKey:@"VideoFramerateMode"];
+                [preset setObject:@"pfr"
+                           forKey:@"VideoFramerateMode"];
             }
         }
         
 
         
         /* 2 Pass Encoding */
-        [preset setObject:[NSNumber numberWithInteger:[fVidTwoPassCheck state]] forKey:@"VideoTwoPass"];
+        [preset setObject:[NSNumber numberWithInteger:[fVidTwoPassCheck state]]
+                   forKey:@"VideoTwoPass"];
         /* Turbo 2 pass Encoding fVidTurboPassCheck*/
-        [preset setObject:[NSNumber numberWithInteger:[fVidTurboPassCheck state]] forKey:@"VideoTurboTwoPass"];
+        [preset setObject:[NSNumber numberWithInteger:[fVidTurboPassCheck state]]
+                   forKey:@"VideoTurboTwoPass"];
         /*Picture Settings*/
         hb_job_t * job = fTitle->job;
         
         /* Picture Sizing */
-        [preset setObject:[NSNumber numberWithInt:0] forKey:@"UsesMaxPictureSettings"];
-        [preset setObject:[NSNumber numberWithInt:[fPresetNewPicWidth intValue]] forKey:@"PictureWidth"];
-        [preset setObject:[NSNumber numberWithInt:[fPresetNewPicHeight intValue]] forKey:@"PictureHeight"];
-        [preset setObject:[NSNumber numberWithInt:fTitle->job->keep_ratio] forKey:@"PictureKeepRatio"];
-        [preset setObject:[NSNumber numberWithInt:fTitle->job->anamorphic.mode] forKey:@"PicturePAR"];
-        [preset setObject:[NSNumber numberWithInt:fTitle->job->modulus] forKey:@"PictureModulus"];
+        [preset setObject:[NSNumber numberWithInt:0]
+                   forKey:@"UsesMaxPictureSettings"];
+        [preset setObject:[NSNumber numberWithInt:[fPresetNewPicWidth intValue]]
+                   forKey:@"PictureWidth"];
+        [preset setObject:[NSNumber numberWithInt:[fPresetNewPicHeight intValue]]
+                   forKey:@"PictureHeight"];
+        [preset setObject:[NSNumber numberWithInt:fTitle->job->keep_ratio]
+                   forKey:@"PictureKeepRatio"];
+        [preset setObject:[NSNumber numberWithInt:fTitle->job->anamorphic.mode]
+                   forKey:@"PicturePAR"];
+        [preset setObject:[NSNumber numberWithInt:fTitle->job->modulus]
+                   forKey:@"PictureModulus"];
         
         /* Set crop settings here */
-        [preset setObject:[NSNumber numberWithInt:[fPictureController autoCrop]] forKey:@"PictureAutoCrop"];
-        [preset setObject:[NSNumber numberWithInt:job->crop[0]] forKey:@"PictureTopCrop"];
-        [preset setObject:[NSNumber numberWithInt:job->crop[1]] forKey:@"PictureBottomCrop"];
-        [preset setObject:[NSNumber numberWithInt:job->crop[2]] forKey:@"PictureLeftCrop"];
-        [preset setObject:[NSNumber numberWithInt:job->crop[3]] forKey:@"PictureRightCrop"];
+        [preset setObject:[NSNumber numberWithInt:[fPictureController autoCrop]]
+                   forKey:@"PictureAutoCrop"];
+        [preset setObject:[NSNumber numberWithInt:job->crop[0]]
+                   forKey:@"PictureTopCrop"];
+        [preset setObject:[NSNumber numberWithInt:job->crop[1]]
+                   forKey:@"PictureBottomCrop"];
+        [preset setObject:[NSNumber numberWithInt:job->crop[2]]
+                   forKey:@"PictureLeftCrop"];
+        [preset setObject:[NSNumber numberWithInt:job->crop[3]]
+                   forKey:@"PictureRightCrop"];
         
         /* Picture Filters */
-        [preset setObject:[NSNumber numberWithInteger:[fPictureController useDecomb]] forKey:@"PictureDecombDeinterlace"];
-        [preset setObject:[NSNumber numberWithInteger:[fPictureController deinterlace]] forKey:@"PictureDeinterlace"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController useDecomb]]
+                   forKey:@"PictureDecombDeinterlace"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController deinterlace]]
+                   forKey:@"PictureDeinterlace"];
         [preset setObject:[fPictureController deinterlaceCustomString] forKey:@"PictureDeinterlaceCustom"];
-        [preset setObject:[NSNumber numberWithInteger:[fPictureController detelecine]] forKey:@"PictureDetelecine"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController detelecine]]
+                   forKey:@"PictureDetelecine"];
         [preset setObject:[fPictureController detelecineCustomString] forKey:@"PictureDetelecineCustom"];
-        [preset setObject:[NSNumber numberWithInteger:[fPictureController denoise]] forKey:@"PictureDenoise"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController denoise]]
+                   forKey:@"PictureDenoise"];
         [preset setObject:[fPictureController denoiseCustomString] forKey:@"PictureDenoiseCustom"];
-        [preset setObject:[NSNumber numberWithInteger:[fPictureController deblock]] forKey:@"PictureDeblock"];
-        [preset setObject:[NSNumber numberWithInteger:[fPictureController decomb]] forKey:@"PictureDecomb"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController deblock]]
+                   forKey:@"PictureDeblock"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController decomb]]
+                   forKey:@"PictureDecomb"];
         [preset setObject:[fPictureController decombCustomString] forKey:@"PictureDecombCustom"];
-        [preset setObject:[NSNumber numberWithInteger:[fPictureController grayscale]] forKey:@"VideoGrayScale"];
+        [preset setObject:[NSNumber numberWithInteger:[fPictureController grayscale]]
+                   forKey:@"VideoGrayScale"];
         
         /* Auto Pasthru */
-        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowAACPassCheck state]] forKey: @"AudioAllowAACPass"];
-        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowAC3PassCheck state]] forKey: @"AudioAllowAC3Pass"];
-        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowDTSHDPassCheck state]] forKey: @"AudioAllowDTSHDPass"];
-        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowDTSPassCheck state]] forKey: @"AudioAllowDTSPass"];
-        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowMP3PassCheck state]] forKey: @"AudioAllowMP3Pass"];
-        [preset setObject:[fAudioFallbackPopUp titleOfSelectedItem] forKey: @"AudioEncoderFallback"];
+        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowAACPassCheck state]]
+                   forKey: @"AudioAllowAACPass"];
+        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowAC3PassCheck state]]
+                   forKey: @"AudioAllowAC3Pass"];
+        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowDTSHDPassCheck state]]
+                   forKey: @"AudioAllowDTSHDPass"];
+        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowDTSPassCheck state]]
+                   forKey: @"AudioAllowDTSPass"];
+        [preset setObject:[NSNumber numberWithInteger:[fAudioAllowMP3PassCheck state]]
+                   forKey: @"AudioAllowMP3Pass"];
+        [preset setObject:[fAudioFallbackPopUp titleOfSelectedItem]
+                   forKey: @"AudioEncoderFallback"];
         
         /* Audio */
         NSMutableArray *audioListArray = [[NSMutableArray alloc] init];
 		[fAudioDelegate prepareAudioForPreset: audioListArray];
         
         
-        [preset setObject:[NSMutableArray arrayWithArray: audioListArray] forKey:@"AudioList"];
+        [preset setObject:[NSMutableArray arrayWithArray: audioListArray]
+                   forKey:@"AudioList"];
         [audioListArray release];
 
         
@@ -7348,8 +7425,11 @@ return YES;
     NSString *defaultExportDirectory = [NSString stringWithFormat: @"%@/Desktop/", NSHomeDirectory()];
     [panel setDirectoryURL:[NSURL fileURLWithPath:defaultExportDirectory]];
     [panel setNameFieldStringValue:@"HB_Export.plist"];
-    [panel beginSheetModalForWindow:fWindow completionHandler:^(NSInteger result) {
-        [self browseExportPresetFileDone:panel returnCode: (int)result contextInfo:sender];
+    [panel beginSheetModalForWindow:fWindow
+                  completionHandler:^(NSInteger result) {
+        [self browseExportPresetFileDone:panel
+                              returnCode: (int)result
+                             contextInfo:sender];
     }];
 }
 
@@ -7358,16 +7438,20 @@ return YES;
 {
     if( returnCode == NSOKButton )
     {
-        NSString *presetExportDirectory = [[sheet filename] stringByDeletingLastPathComponent];
-        NSString *exportPresetsFile = [sheet filename];
-        [[NSUserDefaults standardUserDefaults] setObject:presetExportDirectory forKey:@"LastPresetExportDirectory"];
+        
+        NSURL *exportPresetsFile = [sheet URL];
+        NSURL *presetExportDirectory = [exportPresetsFile URLByDeletingLastPathComponent];
+        [[NSUserDefaults standardUserDefaults] setURL:presetExportDirectory
+                                               forKey:@"LastPresetExportDirectory"];
         /* We check for the presets.plist */
-        if ([[NSFileManager defaultManager] fileExistsAtPath:exportPresetsFile] == 0)
+        if ([[NSFileManager defaultManager] fileExistsAtPath:[exportPresetsFile path]] == 0)
         {
-            [[NSFileManager defaultManager] createFileAtPath:exportPresetsFile contents:nil attributes:nil];
+            [[NSFileManager defaultManager] createFileAtPath:[exportPresetsFile path]
+                                                    contents:nil
+                                                  attributes:nil];
         }
-        NSMutableArray *presetsToExport = [[[NSMutableArray alloc] initWithContentsOfFile:exportPresetsFile] autorelease];
-        if (nil == presetsToExport)
+        NSMutableArray *presetsToExport = [[[NSMutableArray alloc] initWithContentsOfURL:exportPresetsFile] autorelease];
+        if (presetsToExport == nil)
         {
             presetsToExport = [[NSMutableArray alloc] init];
 
@@ -7377,7 +7461,8 @@ return YES;
         if (YES == [self hasValidPresetSelected])
         {
             [presetsToExport addObject:[self selectedPreset]];
-            [presetsToExport writeToFile:exportPresetsFile atomically:YES];
+            [presetsToExport writeToURL:exportPresetsFile
+                             atomically:YES];
 
         }
     }
@@ -7420,11 +7505,12 @@ return YES;
 {
     if( returnCode == NSOKButton )
     {
-        NSString *importPresetsDirectory = [[sheet filename] stringByDeletingLastPathComponent];
-        NSString *importPresetsFile = [sheet filename];
-        [[NSUserDefaults standardUserDefaults] setObject:importPresetsDirectory forKey:@"LastPresetImportDirectory"];
+        NSURL *importPresetsFile = [sheet URL];
+        NSURL *importPresetsDirectory = [importPresetsFile URLByDeletingLastPathComponent];
+        [[NSUserDefaults standardUserDefaults] setURL:importPresetsDirectory
+                                                  forKey:@"LastPresetImportDirectory"];
         /* NOTE: here we need to do some sanity checking to verify we do not hose up our presets file   */
-        NSMutableArray * presetsToImport = [[NSMutableArray alloc] initWithContentsOfFile:importPresetsFile];
+        NSMutableArray * presetsToImport = [[NSMutableArray alloc] initWithContentsOfURL:importPresetsFile];
         /* iterate though the new array of presets to import and add them to our presets array */
         int i = 0;
         NSEnumerator *enumerator = [presetsToImport objectEnumerator];
@@ -7433,10 +7519,12 @@ return YES;
         {
             /* make any changes to the incoming preset we see fit */
             /* make sure the incoming preset is not tagged as default */
-            [tempObject setObject:[NSNumber numberWithInt:0] forKey:@"Default"];
+            [tempObject setObject:[NSNumber numberWithInt:0]
+                           forKey:@"Default"];
             /* prepend "(imported) to the name of the incoming preset for clarification since it can be changed */
             NSString * prependedName = [@"(import) " stringByAppendingString:[tempObject objectForKey:@"PresetName"]] ;
-            [tempObject setObject:prependedName forKey:@"PresetName"];
+            [tempObject setObject:prependedName
+                           forKey:@"PresetName"];
             
             /* actually add the new preset to our presets array */
             [UserPresets addObject:tempObject];
@@ -7764,7 +7852,7 @@ return YES;
     
     if( returnCode == NSOKButton )  /* if they click OK */
     {	
-        chapterName = [[NSString alloc] initWithContentsOfFile:[sheet filename] encoding:NSUTF8StringEncoding error:NULL];
+        chapterName = [[NSString alloc] initWithContentsOfFile:[[sheet URL] path] encoding:NSUTF8StringEncoding error:NULL];
         chaptersArray = [chapterName componentsSeparatedByString:@"\n"];
         [chapterName release];
         chaptersMutableArray = [[chaptersArray mutableCopy] autorelease];
@@ -7786,7 +7874,7 @@ return YES;
                            alternateButton:NULL 
                                otherButton:NULL
                  informativeTextWithFormat:NSLocalizedString(@"%d chapters expected, %d chapters found in %@", @"%d chapters expected, %d chapters found in %@"), 
-              chapters, [chaptersMutableArray count], [[sheet filename] lastPathComponent]] runModal];
+              chapters, [chaptersMutableArray count], [[sheet URL] lastPathComponent]] runModal];
             return;
         }
 		/* otherwise, go ahead and populate table with array */
@@ -7813,7 +7901,7 @@ return YES;
                                  defaultButton:NSLocalizedString(@"OK", @"OK")
                                alternateButton:NULL 
                                    otherButton:NULL
-                     informativeTextWithFormat:NSLocalizedString(@"%@ was not formatted as expected.", @"%@ was not formatted as expected."), [[sheet filename] lastPathComponent]] runModal];   
+                     informativeTextWithFormat:NSLocalizedString(@"%@ was not formatted as expected.", @"%@ was not formatted as expected."), [[sheet URL] lastPathComponent]] runModal];
                 [fChapterTable reloadData];
                 return;
             }
@@ -7875,7 +7963,7 @@ return YES;
             
         }
         /* try to write it to where the user wanted */
-        if (![chapterName writeToFile:[sheet filename] 
+        if (![chapterName writeToFile:[[sheet URL] path]
                            atomically:NO 
                              encoding:NSUTF8StringEncoding 
                                 error:&saveError])

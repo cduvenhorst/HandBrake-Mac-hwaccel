@@ -255,7 +255,7 @@ BOOL                        fIsDragging;
     hb_handle_t                  * fHandle;
     
     /* Queue variables */
-    int                          hbInstanceNum; //stores the number of HandBrake instances currently running
+    NSUInteger                          hbInstanceNum; //stores the number of HandBrake instances currently running
     hb_handle_t                  * fQueueEncodeLibhb;           // libhb for HB Encoding
 	hb_title_t                   * fTitle;
     hb_title_t                   * fQueueEncodeTitle;
@@ -287,7 +287,7 @@ BOOL                        fIsDragging;
     DockTextField                 * percentField;
     DockTextField                 * timeField;
 }
-- (int) getPidnum;
+- (pid_t) getPidnum;
 - (IBAction) showAboutPanel:(id)sender;
 
 - (void) writeToActivityLog:(const char *) format, ...;
@@ -466,7 +466,7 @@ BOOL                        fIsDragging;
 
 - (void)moveObjectsInPresetsArray:(NSMutableArray *)array fromIndexes:(NSIndexSet *)indexSet toIndex:(NSUInteger)insertIndex;
 
-- (int) hbInstances;
+- (NSUInteger) hbInstances;
 
 // Chapter files methods
 - (IBAction) browseForChapterFile: (id) sender;
