@@ -31,6 +31,7 @@ namespace HandBrakeWPF.ViewModels
     using HandBrake.ApplicationServices.Utilities;
 
     using HandBrakeWPF.Commands;
+    using HandBrakeWPF.Factories;
     using HandBrakeWPF.Helpers;
     using HandBrakeWPF.Model;
     using HandBrakeWPF.Properties;
@@ -1087,7 +1088,7 @@ namespace HandBrakeWPF.ViewModels
                 return;
             }
 
-            QueueTask task = new QueueTask { Task = new EncodeTask(this.CurrentTask) };
+            QueueTask task = new QueueTask(new EncodeTask(this.CurrentTask), HBConfigurationFactory.Create());
             if (!this.queueProcessor.CheckForDestinationPathDuplicates(task.Task.Destination))
             {
                 this.queueProcessor.Add(task);
@@ -1257,7 +1258,7 @@ namespace HandBrakeWPF.ViewModels
             // Check if we already have jobs, and if we do, just start the queue.
             if (this.queueProcessor.Count != 0)
             {
-                this.queueProcessor.Start();
+                this.queueProcessor.Start(UserSettingService.GetUserSetting<bool>(UserSettingConstants.ClearCompletedFromQueue));
                 return;
             }
 
@@ -1284,13 +1285,9 @@ namespace HandBrakeWPF.ViewModels
             }
 
             // Create the Queue Task and Start Processing
-            QueueTask task = new QueueTask
-                {
-                    Task = new EncodeTask(this.CurrentTask),
-                    CustomQuery = false
-                };
+            QueueTask task = new QueueTask(new EncodeTask(this.CurrentTask), HBConfigurationFactory.Create());
             this.queueProcessor.Add(task);
-            this.queueProcessor.Start();
+            this.queueProcessor.Start(UserSettingService.GetUserSetting<bool>(UserSettingConstants.ClearCompletedFromQueue));
             this.IsEncoding = true;
         }
 
@@ -1304,7 +1301,7 @@ namespace HandBrakeWPF.ViewModels
         {
             // Rescan the source to make sure it's still valid
             this.queueEditTask = task;
-            this.scanService.Scan(task.Source, task.Title, this.UserSettingService.GetUserSetting<int>(ASUserSettingConstants.PreviewScanCount), QueueEditAction);
+            this.scanService.Scan(task.Source, task.Title, QueueEditAction, HBConfigurationFactory.Create());
         }
 
         /// <summary>
@@ -1338,13 +1335,7 @@ namespace HandBrakeWPF.ViewModels
         public void ShowCliQuery()
         {
             this.errorService.ShowMessageBox(
-                QueryGeneratorUtility.GenerateQuery(this.CurrentTask,
-                userSettingService.GetUserSetting<int>(ASUserSettingConstants.PreviewScanCount),
-                userSettingService.GetUserSetting<int>(ASUserSettingConstants.Verbosity),
-                userSettingService.GetUserSetting<bool>(ASUserSettingConstants.DisableLibDvdNav),
-                    userSettingService.GetUserSetting<bool>(ASUserSettingConstants.DisableQuickSyncDecoding),
-                                       userSettingService.GetUserSetting<bool>(ASUserSettingConstants.EnableDxva),
-                                       userSettingService.GetUserSetting<VideoScaler>(ASUserSettingConstants.ScalingMode) == VideoScaler.BicubicCl),
+                QueryGeneratorUtility.GenerateQuery(this.CurrentTask, HBConfigurationFactory.Create()),
                 "CLI Query",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -1581,8 +1572,7 @@ namespace HandBrakeWPF.ViewModels
                     PlistUtility.Export(
                         savefiledialog.FileName,
                         this.selectedPreset,
-                        this.userSettingService.GetUserSetting<int>(ASUserSettingConstants.HandBrakeBuild)
-                                          .ToString(CultureInfo.InvariantCulture));
+                        this.userSettingService.GetUserSetting<int>(UserSettingConstants.HandBrakeBuild).ToString(CultureInfo.InvariantCulture));
                 }
             }
             else
@@ -1630,7 +1620,7 @@ namespace HandBrakeWPF.ViewModels
         {
             if (!string.IsNullOrEmpty(filename))
             {
-                this.scanService.Scan(filename, title, this.UserSettingService.GetUserSetting<int>(ASUserSettingConstants.PreviewScanCount), null);
+                this.scanService.Scan(filename, title, null, HBConfigurationFactory.Create());
             }
         }
 

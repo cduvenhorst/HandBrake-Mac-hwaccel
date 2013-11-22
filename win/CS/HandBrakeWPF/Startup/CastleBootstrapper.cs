@@ -62,6 +62,7 @@ namespace HandBrakeWPF.Startup
             this.windsorContainer.Register(Component.For<IEncodeServiceWrapper>().ImplementedBy<EncodeServiceWrapper>().LifeStyle.Is(LifestyleType.Singleton));
             this.windsorContainer.Register(Component.For<INotificationService>().ImplementedBy<NotificationService>().LifeStyle.Is(LifestyleType.Singleton));
             this.windsorContainer.Register(Component.For<IPrePostActionService>().ImplementedBy<PrePostActionService>().LifeStyle.Is(LifestyleType.Singleton));
+            this.windsorContainer.Register(Component.For<IUserSettingService>().ImplementedBy<UserSettingService>());
 
             // Commands
             this.windsorContainer.Register(Component.For<IAdvancedEncoderOptionsCommand>().ImplementedBy<AdvancedEncoderOptionsCommand>().LifeStyle.Is(LifestyleType.Singleton));
@@ -80,9 +81,11 @@ namespace HandBrakeWPF.Startup
             this.windsorContainer.Register(Component.For<ITitleSpecificViewModel>().ImplementedBy<TitleSpecificViewModel>().LifeStyle.Is(LifestyleType.Singleton));
             this.windsorContainer.Register(Component.For<IQueueSelectionViewModel>().ImplementedBy<QueueSelectionViewModel>().LifeStyle.Is(LifestyleType.Singleton));
             this.windsorContainer.Register(Component.For<ICountdownAlertViewModel>().ImplementedBy<CountdownAlertViewModel>().LifeStyle.Is(LifestyleType.Singleton));
-                   
+                 
+            // Experimental Services and Windows.
             this.windsorContainer.Register(Component.For<IInstantViewModel>().ImplementedBy<InstantViewModel>().LifeStyle.Is(LifestyleType.Singleton));
-
+            this.windsorContainer.Register(Component.For<IStaticPreviewViewModel>().ImplementedBy<StaticPreviewViewModel>().LifeStyle.Is(LifestyleType.Singleton));
+                
             // Tab Components
             this.windsorContainer.Register(Component.For<IAudioViewModel>().ImplementedBy<AudioViewModel>().LifeStyle.Is(LifestyleType.Singleton));
             this.windsorContainer.Register(Component.For<IX264ViewModel>().ImplementedBy<X264ViewModel>().LifeStyle.Is(LifestyleType.Singleton));

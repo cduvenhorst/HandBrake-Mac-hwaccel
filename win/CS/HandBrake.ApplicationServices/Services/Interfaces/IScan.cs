@@ -10,8 +10,10 @@
 namespace HandBrake.ApplicationServices.Services.Interfaces
 {
     using System;
+    using System.Windows.Media.Imaging;
 
     using HandBrake.ApplicationServices.EventArgs;
+    using HandBrake.ApplicationServices.Model;
     using HandBrake.ApplicationServices.Parsing;
 
     /// <summary>
@@ -81,13 +83,27 @@ namespace HandBrake.ApplicationServices.Services.Interfaces
         /// <param name="title">
         /// int title number. 0 for scan all
         /// </param>
-        /// <param name="previewCount">
-        /// The preview Count.
-        /// </param>
         /// <param name="postAction">
         /// The post Action.
         /// </param>
-        void Scan(string sourcePath, int title, int previewCount, Action<bool> postAction);
+        /// <param name="configuration">
+        /// The configuraiton.
+        /// </param>
+        void Scan(string sourcePath, int title, Action<bool> postAction, HBConfiguration configuration);
+
+        /// <summary>
+        /// Get a Preview image for the current job and preview number.
+        /// </summary>
+        /// <param name="task">
+        /// The task.
+        /// </param>
+        /// <param name="preview">
+        /// The preview.
+        /// </param>
+        /// <returns>
+        /// The <see cref="BitmapImage"/>.
+        /// </returns>
+        BitmapImage GetPreview(EncodeTask task, int preview);
 
         /// <summary>
         /// Kill the scan

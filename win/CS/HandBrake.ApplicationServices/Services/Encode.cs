@@ -29,11 +29,6 @@ namespace HandBrake.ApplicationServices.Services
         #region Private Variables
 
         /// <summary>
-        /// The User Setting Service
-        /// </summary>
-        private readonly IUserSettingService userSettingService;
-
-        /// <summary>
         /// Gets the Process ID
         /// </summary>
         private int processId;
@@ -54,18 +49,6 @@ namespace HandBrake.ApplicationServices.Services
         private bool initShutdown;
 
         #endregion
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="Encode"/> class.
-        /// </summary>
-        /// <param name="userSettingService">
-        /// The user Setting Service.
-        /// </param>
-        public Encode(IUserSettingService userSettingService)
-            : base(userSettingService)
-        {
-            this.userSettingService = userSettingService;
-        }
 
         #region Properties
 
@@ -96,10 +79,7 @@ namespace HandBrake.ApplicationServices.Services
         /// <param name="encodeQueueTask">
         /// The encodeQueueTask.
         /// </param>
-        /// <param name="enableLogging">
-        /// Enable Logging. When Disabled we onlt parse Standard Ouput for progress info. Standard Error log data is ignored.
-        /// </param>
-        public void Start(QueueTask encodeQueueTask, bool enableLogging)
+        public void Start(QueueTask encodeQueueTask)
         {
             try
             {
@@ -111,7 +91,7 @@ namespace HandBrake.ApplicationServices.Services
                 this.IsEncoding = true;
                 this.currentTask = encodeQueueTask;
 
-                if (enableLogging)
+                if (encodeQueueTask.Configuration.IsLoggingEnabled)
                 {
                     try
                     {
@@ -133,24 +113,15 @@ namespace HandBrake.ApplicationServices.Services
                 string query = this.currentTask.Task.IsPreviewEncode
                                    ? QueryGeneratorUtility.GeneratePreviewQuery(
                                        new EncodeTask(this.currentTask.Task),
+                                       encodeQueueTask.Configuration,
                                        this.currentTask.Task.PreviewEncodeDuration,
-                                       this.currentTask.Task.PreviewEncodeStartAt,
-                                       userSettingService.GetUserSetting<int>(ASUserSettingConstants.PreviewScanCount),
-                                       userSettingService.GetUserSetting<int>(ASUserSettingConstants.Verbosity),
-                                       userSettingService.GetUserSetting<bool>(ASUserSettingConstants.DisableLibDvdNav),
-                                       userSettingService.GetUserSetting<bool>(ASUserSettingConstants.DisableQuickSyncDecoding))
-                                   : QueryGeneratorUtility.GenerateQuery(new EncodeTask(this.currentTask.Task),
-                                   userSettingService.GetUserSetting<int>(ASUserSettingConstants.PreviewScanCount),
-                                   userSettingService.GetUserSetting<int>(ASUserSettingConstants.Verbosity),
-                                   userSettingService.GetUserSetting<bool>(ASUserSettingConstants.DisableLibDvdNav),
-                                       userSettingService.GetUserSetting<bool>(ASUserSettingConstants.DisableQuickSyncDecoding),
-                                       userSettingService.GetUserSetting<bool>(ASUserSettingConstants.EnableDxva),
-                                       userSettingService.GetUserSetting<VideoScaler>(ASUserSettingConstants.ScalingMode) == VideoScaler.BicubicCl);
+                                       this.currentTask.Task.PreviewEncodeStartAt)
+                                   : QueryGeneratorUtility.GenerateQuery(new EncodeTask(this.currentTask.Task), encodeQueueTask.Configuration);
 
                 ProcessStartInfo cliStart = new ProcessStartInfo(handbrakeCLIPath, query)
                 {
                     RedirectStandardOutput = true,
-                    RedirectStandardError = enableLogging,
+                    RedirectStandardError = encodeQueueTask.Configuration.IsLoggingEnabled,
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
@@ -161,7 +132,7 @@ namespace HandBrake.ApplicationServices.Services
 
                 this.startTime = DateTime.Now;
 
-                if (enableLogging)
+                if (encodeQueueTask.Configuration.IsLoggingEnabled)
                 {
                     this.HbProcess.ErrorDataReceived += this.HbProcErrorDataReceived;
                     this.HbProcess.BeginErrorReadLine();
@@ -180,7 +151,7 @@ namespace HandBrake.ApplicationServices.Services
                 }
 
                 // Set the Process Priority
-                switch (this.userSettingService.GetUserSetting<string>(ASUserSettingConstants.ProcessPriority))
+                switch (encodeQueueTask.Configuration.ProcessPriority)
                 {
                     case "Realtime":
                         this.HbProcess.PriorityClass = ProcessPriorityClass.RealTime;
@@ -287,7 +258,7 @@ namespace HandBrake.ApplicationServices.Services
                 this.HbProcess.CancelOutputRead();
                 this.ShutdownFileWriter();
             }
-            catch (Exception exc)
+            catch (Exception)
             {
                 // This exception doesn't warrent user interaction, but it should be logged (TODO)
             }

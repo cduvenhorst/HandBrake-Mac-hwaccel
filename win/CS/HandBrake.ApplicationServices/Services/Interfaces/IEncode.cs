@@ -82,10 +82,7 @@ namespace HandBrake.ApplicationServices.Services.Interfaces
         /// <param name="job">
         /// The job.
         /// </param>
-        /// <param name="enableLogging">
-        /// The enable Logging.
-        /// </param>
-        void Start(QueueTask job, bool enableLogging);
+        void Start(QueueTask job);
 
         /// <summary>
         /// The pause.
@@ -108,7 +105,10 @@ namespace HandBrake.ApplicationServices.Services.Interfaces
         /// <param name="destination">
         /// The destination.
         /// </param>
-        void ProcessLogs(string destination);
+        /// <param name="configuration">
+        /// The configuration.
+        /// </param>
+        void ProcessLogs(string destination, HBConfiguration configuration);
 
         /// <summary>
         /// Shutdown the service.

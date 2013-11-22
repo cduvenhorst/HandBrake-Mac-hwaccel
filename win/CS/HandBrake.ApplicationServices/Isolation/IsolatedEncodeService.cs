@@ -162,9 +162,12 @@ namespace HandBrake.ApplicationServices.Isolation
         /// <param name="destination">
         /// The destination.
         /// </param>
-        public void ProcessLogs(string destination)
+        /// <param name="configuration">
+        /// The configuration.
+        /// </param>
+        public void ProcessLogs(string destination, HBConfiguration configuration)
         {
-            ThreadPool.QueueUserWorkItem(delegate { this.Service.ProcessEncodeLogs(destination); });
+            ThreadPool.QueueUserWorkItem(delegate { this.Service.ProcessEncodeLogs(destination, configuration); });
         }
 
         /// <summary>
@@ -173,13 +176,10 @@ namespace HandBrake.ApplicationServices.Isolation
         /// <param name="job">
         /// The job.
         /// </param>
-        /// <param name="enableLogging">
-        /// The enable Logging.
-        /// </param>
-        public void Start(QueueTask job, bool enableLogging)
+        public void Start(QueueTask job)
         {
             ThreadPool.QueueUserWorkItem(
-                delegate { this.Service.StartEncode(job, enableLogging); });
+                delegate { this.Service.StartEncode(job); });
         }
 
         /// <summary>

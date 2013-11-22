@@ -1,25 +1,27 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="X264View.xaml.cs" company="HandBrake Project (http://handbrake.fr)">
+// <copyright file="IStaticPreviewViewModel.cs" company="HandBrake Project (http://handbrake.fr)">
 //   This file is part of the HandBrake source code - It may be used under the terms of the GNU General Public License.
 // </copyright>
 // <summary>
-//   Interaction logic for X264View.xaml
+//   The Static Preview View Model Interface
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace HandBrakeWPF.Views
+namespace HandBrakeWPF.ViewModels.Interfaces
 {
+    using System.Windows.Media.Imaging;
+
     /// <summary>
-    /// Interaction logic for AdvancedView.xaml
+    /// The Static Preview View Model Interface
     /// </summary>
-    public partial class X264View
+    public interface IStaticPreviewViewModel
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="X264View"/> class. 
+        /// The preview frame.
         /// </summary>
-        public X264View()
-        {
-            InitializeComponent();
-        }
+        /// <param name="image">
+        /// The image.
+        /// </param>
+        void PreviewFrame(BitmapImage image);
     }
 }

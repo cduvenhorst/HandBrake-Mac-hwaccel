@@ -37,11 +37,6 @@ namespace HandBrake.ApplicationServices.Services
         private static readonly object logLock = new object();
 
         /// <summary>
-        /// The User Setting Service
-        /// </summary>
-        private readonly IUserSettingService userSettingService;
-
-        /// <summary>
         /// The instance.
         /// </summary>
         private IHandBrakeInstance instance;
@@ -66,14 +61,8 @@ namespace HandBrake.ApplicationServices.Services
         /// <summary>
         /// Initializes a new instance of the <see cref="LibEncode"/> class.
         /// </summary>
-        /// <param name="userSettingService">
-        /// The user Setting Service.
-        /// </param>
-        public LibEncode(IUserSettingService userSettingService)
-            : base(userSettingService)
+        public LibEncode()
         {
-            this.userSettingService = userSettingService;
-
             HandBrakeUtils.MessageLogged += this.HandBrakeInstanceMessageLogged;
             HandBrakeUtils.ErrorLogged += this.HandBrakeInstanceErrorLogged;
         }
@@ -95,14 +84,11 @@ namespace HandBrake.ApplicationServices.Services
         /// <param name="job">
         /// The job.
         /// </param>
-        /// <param name="enableLogging">
-        /// The enable Logging.
-        /// </param>
-        public void Start(QueueTask job, bool enableLogging)
+        public void Start(QueueTask job)
         {
             // Setup
             this.startTime = DateTime.Now;
-            this.loggingEnabled = enableLogging;
+            this.loggingEnabled = job.Configuration.IsLoggingEnabled;
             this.currentTask = job;
 
             // Create a new HandBrake instance
@@ -123,7 +109,7 @@ namespace HandBrake.ApplicationServices.Services
                 this.IsEncoding = true;
 
                 // Enable logging if required.
-                if (enableLogging)
+                if (job.Configuration.IsLoggingEnabled)
                 {
                     try
                     {
@@ -221,7 +207,7 @@ namespace HandBrake.ApplicationServices.Services
             this.InvokeEncodeStarted(EventArgs.Empty);
 
             // Set the Process Priority
-            switch (this.userSettingService.GetUserSetting<string>(ASUserSettingConstants.ProcessPriority))
+            switch (job.Configuration.ProcessPriority)
             {
                 case "Realtime":
                     Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.RealTime;

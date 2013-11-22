@@ -17,6 +17,11 @@ namespace HandBrakeWPF
         #region Constants and Fields
 
         /// <summary>
+        /// HandBrakes build
+        /// </summary>
+        public const string HandBrakeBuild = "HandBrakeBuild";
+
+        /// <summary>
         /// Add Only One Per Langage
         /// </summary>
         public const string AddOnlyOneAudioPerLanguage = "addOnlyOneAudioPerLanguage";
@@ -245,6 +250,66 @@ namespace HandBrakeWPF
         /// The add foreign audio scan track.
         /// </summary>
         public const string AddForeignAudioScanTrack = "AddForeignAudioScanTrack";
+
+        /// <summary>
+        /// The disable lib dvd nav.
+        /// </summary>
+        public const string DisableLibDvdNav = "DisableLibDvdNav";
+
+        /// <summary>
+        /// The disable quick sync decoding.
+        /// </summary>
+        public const string DisableQuickSyncDecoding = "DisableQuickSyncDecoding";
+
+        /// <summary>
+        /// The enable dxva.
+        /// </summary>
+        public const string EnableDxva = "EnableDxva";
+
+        /// <summary>
+        /// The scaling mode.
+        /// </summary>
+        public const string ScalingMode = "ScalingMode";
+
+        /// <summary>
+        /// Preview Scan Count
+        /// </summary>
+        public const string PreviewScanCount = "previewScanCount";
+
+        /// <summary>
+        /// The Verbosity
+        /// </summary>
+        public const string Verbosity = "Verbosity";
+
+        /// <summary>
+        /// Min Title Scan Duration
+        /// </summary>
+        public const string MinScanDuration = "MinTitleScanDuration";
+
+        /// <summary>
+        /// Process Priority
+        /// </summary>
+        public const string ProcessPriority = "ProcessPriority";
+
+        /// <summary>
+        /// Save Log Directory
+        /// </summary>
+        public const string SaveLogToCopyDirectory = "SaveLogToCopyDirectory";
+
+        /// <summary>
+        /// Save log with video
+        /// </summary>
+        public const string SaveLogWithVideo = "SaveLogWithVideo";
+
+        /// <summary>
+        /// Save copy of the log to a directory
+        /// </summary>
+        public const string SaveLogCopyDirectory = "SaveLogCopyDirectory";
+
+        /// <summary>
+        /// The clear completed from queue.
+        /// </summary>
+        public const string ClearCompletedFromQueue = "ClearCompletedFromQueue";
 
         #endregion
     }

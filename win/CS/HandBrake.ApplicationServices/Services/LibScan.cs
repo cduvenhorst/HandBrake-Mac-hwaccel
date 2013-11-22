@@ -13,8 +13,10 @@ namespace HandBrake.ApplicationServices.Services
     using System.Collections.Generic;
     using System.IO;
     using System.Text;
+    using System.Windows.Media.Imaging;
 
     using HandBrake.ApplicationServices.EventArgs;
+    using HandBrake.ApplicationServices.Model;
     using HandBrake.ApplicationServices.Model.Encoding;
     using HandBrake.ApplicationServices.Parsing;
     using HandBrake.ApplicationServices.Services.Interfaces;
@@ -22,6 +24,7 @@ namespace HandBrake.ApplicationServices.Services
     using HandBrake.Interop;
     using HandBrake.Interop.EventArgs;
     using HandBrake.Interop.Interfaces;
+    using HandBrake.Interop.Model;
 
     using AudioTrack = HandBrake.ApplicationServices.Parsing.Audio;
     using ScanProgressEventArgs = HandBrake.Interop.EventArgs.ScanProgressEventArgs;
@@ -45,11 +48,6 @@ namespace HandBrake.ApplicationServices.Services
         /// Lock for the log file
         /// </summary>
         static readonly object LogLock = new object();
-
-        /// <summary>
-        /// The user setting service.
-        /// </summary>
-        private readonly IUserSettingService userSettingService;
 
         /// <summary>
         /// Log data from HandBrakeInstance
@@ -91,22 +89,18 @@ namespace HandBrake.ApplicationServices.Services
         /// <summary>
         /// Initializes a new instance of the <see cref="LibScan"/> class. 
         /// </summary>
-        /// <param name="userSettingService">
-        /// The user Setting Service.
-        /// </param>
-        public LibScan(IUserSettingService userSettingService)
+        public LibScan()
         {
             logging = new StringBuilder();
 
             header = GeneralUtilities.CreateCliLogHeader();
-            this.userSettingService = userSettingService;
 
             try
             {
                 HandBrakeUtils.MessageLogged += this.HandBrakeInstanceMessageLogged;
                 HandBrakeUtils.ErrorLogged += this.HandBrakeInstanceErrorLogged;
             }
-            catch (Exception exc)
+            catch (Exception)
             {
                 // Do nothing. 
             }
@@ -169,13 +163,13 @@ namespace HandBrake.ApplicationServices.Services
         /// <param name="title">
         /// int title number. 0 for scan all
         /// </param>
-        /// <param name="previewCount">
-        /// The preview Count.
-        /// </param>
         /// <param name="postAction">
         /// The post Action.
         /// </param>
-        public void Scan(string sourcePath, int title, int previewCount, Action<bool> postAction)
+        /// <param name="configuraiton">
+        /// The configuraiton.
+        /// </param>
+        public void Scan(string sourcePath, int title, Action<bool> postAction, HBConfiguration configuraiton)
         {
             // Try to cleanup any previous scan instances.
             if (instance != null)
@@ -186,7 +180,7 @@ namespace HandBrake.ApplicationServices.Services
                     this.scanLog.Dispose();
                     instance.Dispose();
                 }
-                catch (Exception exc)
+                catch (Exception)
                 {
                     // Do Nothing
                 }
@@ -223,7 +217,7 @@ namespace HandBrake.ApplicationServices.Services
             instance.ScanCompleted += this.InstanceScanCompleted;
 
             // Start the scan on a back
-            this.ScanSource(sourcePath, title, previewCount);
+            this.ScanSource(sourcePath, title, configuraiton.PreviewScanCount, configuraiton);
         }
 
         /// <summary>
@@ -247,6 +241,30 @@ namespace HandBrake.ApplicationServices.Services
             }
         }
 
+        /// <summary>
+        /// Get a Preview image for the current job and preview number.
+        /// </summary>
+        /// <param name="job">
+        /// The job.
+        /// </param>
+        /// <param name="preview">
+        /// The preview.
+        /// </param>
+        /// <returns>
+        /// The <see cref="BitmapImage"/>.
+        /// </returns>
+        public BitmapImage GetPreview(EncodeTask job, int preview)
+        {
+            if (this.instance == null)
+            {
+                return null;
+            }
+
+            EncodeJob encodeJob = InteropModelCreator.GetEncodeJob(job);
+            BitmapImage bitmapImage = this.instance.GetPreview(encodeJob, preview);
+            return bitmapImage;
+        }
+
         #endregion
 
         #region Private Methods
@@ -263,7 +281,10 @@ namespace HandBrake.ApplicationServices.Services
         /// <param name="previewCount">
         /// The preview Count.
         /// </param>
-        private void ScanSource(object sourcePath, int title, int previewCount)
+        /// <param name="configuraiton">
+        /// The configuraiton.
+        /// </param>
+        private void ScanSource(object sourcePath, int title, int previewCount, HBConfiguration configuraiton)
         {
             try
             {
@@ -279,9 +300,9 @@ namespace HandBrake.ApplicationServices.Services
 
                 TimeSpan minDuration =
                     TimeSpan.FromSeconds(
-                        this.userSettingService.GetUserSetting<int>(ASUserSettingConstants.MinScanDuration));
+                       configuraiton.MinScanDuration);
 
-                HandBrakeUtils.SetDvdNav(!this.userSettingService.GetUserSetting<bool>(ASUserSettingConstants.DisableLibDvdNav));
+                HandBrakeUtils.SetDvdNav(!configuraiton.IsDvdNavDisabled);
 
                 this.instance.StartScan(sourcePath.ToString(), previewCount, minDuration, title != 0 ? title : 0);
             }

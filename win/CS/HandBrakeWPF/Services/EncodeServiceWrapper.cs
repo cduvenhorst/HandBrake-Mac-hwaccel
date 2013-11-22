@@ -19,6 +19,8 @@ namespace HandBrakeWPF.Services
     using HandBrake.ApplicationServices.Services;
     using HandBrake.ApplicationServices.Services.Interfaces;
 
+    using HandBrakeWPF.Services.Interfaces;
+
     using EncodeCompletedEventArgs = HandBrake.ApplicationServices.EventArgs.EncodeCompletedEventArgs;
     using EncodeProgressEventArgs = HandBrake.ApplicationServices.EventArgs.EncodeProgressEventArgs;
 
@@ -63,7 +65,7 @@ namespace HandBrakeWPF.Services
                     }
                     else
                     {
-                        this.encodeService = new LibEncode(userSettingService);
+                        this.encodeService = new LibEncode();
                     }
                 }
                 catch (Exception exc)
@@ -78,7 +80,7 @@ namespace HandBrakeWPF.Services
             }
             else
             {
-                this.encodeService = new Encode(userSettingService);
+                this.encodeService = new Encode();
             }
 
             this.encodeService.EncodeCompleted += this.EncodeServiceEncodeCompleted;
@@ -165,9 +167,12 @@ namespace HandBrakeWPF.Services
         /// <param name="destination">
         /// The destination.
         /// </param>
-        public void ProcessLogs(string destination)
+        /// <param name="configuration">
+        /// The configuration.
+        /// </param>
+        public void ProcessLogs(string destination, HBConfiguration configuration)
         {
-            this.encodeService.ProcessLogs(destination);
+            this.encodeService.ProcessLogs(destination, configuration);
         }
 
         /// <summary>
@@ -187,12 +192,9 @@ namespace HandBrakeWPF.Services
         /// <param name="job">
         /// The job.
         /// </param>
-        /// <param name="enableLogging">
-        /// The enable Logging.
-        /// </param>
-        public void Start(QueueTask job, bool enableLogging)
+        public void Start(QueueTask job)
         {
-            this.encodeService.Start(job, enableLogging);
+            this.encodeService.Start(job);
         }
 
         /// <summary>
