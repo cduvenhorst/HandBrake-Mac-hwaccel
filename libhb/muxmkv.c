@@ -153,6 +153,7 @@ static int MKVInit( hb_mux_object_t * m )
     switch (job->vcodec)
     {
         case HB_VCODEC_X264:
+        case HB_VCODEC_VT_H264:
         case HB_VCODEC_QSV_H264:
             avcC = create_h264_header(job, &avcC_len);
             if (avcC == NULL)

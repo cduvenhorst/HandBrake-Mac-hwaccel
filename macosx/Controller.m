@@ -5,6 +5,7 @@
    It may be used under the terms of the GNU General Public License. */
 
 #include <dlfcn.h>
+#import <VideoToolbox/VideoToolbox.h>
 #import "Controller.h"
 #import "HBOutputPanelController.h"
 #import "HBPreferencesController.h"
