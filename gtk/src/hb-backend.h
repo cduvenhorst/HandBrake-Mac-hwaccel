@@ -3,22 +3,23 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Library General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor Boston, MA 02110-1301,  USA
  */
- 
+
 #if !defined(_HBBACKEND_H_)
 #define _HBBACKEND_H_
 
 #include "settings.h"
 #include "hb.h"
+#include "lang.h"
 
 enum
 {
@@ -70,14 +71,15 @@ typedef struct
 
 const gchar* ghb_version(void);
 void ghb_vquality_range(
-    signal_user_data_t *ud, 
-    gdouble *min, 
-    gdouble *max,
-    gdouble *step,
-    gdouble *page,
+    signal_user_data_t *ud,
+    float *min,
+    float *max,
+    float *step,
+    float *page,
     gint *digits,
-    gboolean *inverted);
-//const gchar* ghb_get_rate_string(gint rate, gint type);
+    int *direction);
+float ghb_vquality_default(signal_user_data_t *ud);
+
 void ghb_combo_init(signal_user_data_t *ud);
 void ghb_backend_init(gint debug);
 void ghb_backend_close(void);
@@ -103,11 +105,14 @@ void ghb_backend_scan(const gchar *path, gint titleindex, gint preview_count, gu
 void ghb_backend_scan_stop();
 void ghb_backend_queue_scan(const gchar *path, gint titleindex);
 hb_title_t* ghb_get_title_info(gint titleindex);
+hb_list_t * ghb_get_title_list();
 void ghb_par_init(signal_user_data_t *ud);
 void ghb_set_scale(signal_user_data_t *ud, gint mode);
 void ghb_set_scale_settings(GValue *settings, gint mode);
+void ghb_picture_settings_deps(signal_user_data_t *ud);
 GValue* ghb_get_chapters(gint titleindex);
-void ghb_get_chapter_duration(gint ti, gint ii, gint *hh, gint *mm, gint *ss);
+gint64 ghb_get_chapter_duration(gint ti, gint chap);
+gint64 ghb_get_chapter_start(gint ti, gint chap);
 void ghb_part_duration(gint tt, gint sc, gint ec, gint *hh, gint *mm, gint *ss);
 gint ghb_get_best_mix(hb_audio_config_t *aconfig, gint acodec, gint mix);
 gboolean ghb_ac3_in_audio_list(const GValue *audio_list);
@@ -120,18 +125,13 @@ void ghb_set_bitrate_opts(
 void ghb_grey_combo_options(signal_user_data_t *ud);
 void ghb_update_ui_combo_box(
     signal_user_data_t *ud, const gchar *name, gint user_data, gboolean all);
-const gchar* ghb_get_source_audio_lang(gint titleindex, gint track);
-gint ghb_find_audio_track(
-    gint titleindex, const gchar *lang, gint acodec, 
-    gint fallback_acodec, GHashTable *track_indices);
+const gchar* ghb_get_source_audio_lang(hb_title_t *title, gint track);
+gint ghb_find_audio_track(hb_title_t *title, const gchar *lang, int start);
 const gchar* ghb_audio_track_description(gint track, int titleindex);
 void ghb_add_all_subtitles(signal_user_data_t *ud, gint titleindex);
 gint ghb_find_pref_subtitle_track(const gchar *lang);
-gint ghb_find_subtitle_track(
-    gint titleindex, const gchar *lang, gboolean burn, 
-    gboolean force, gint source, GHashTable *track_indices);
+gint ghb_find_subtitle_track(hb_title_t * title, const gchar * lang, int start);
 gint ghb_pick_subtitle_track(signal_user_data_t *ud);
-gint ghb_find_cc_track(gint titleindex);
 gint ghb_longest_title(void);
 gchar* ghb_build_advanced_opts_string(GValue *settings);
 GdkPixbuf* ghb_get_preview_image(
@@ -157,5 +157,20 @@ const gchar* ghb_lookup_combo_string(const gchar *name, const GValue *gval);
 gchar* ghb_get_tmp_dir();
 gint ghb_find_closest_audio_samplerate(gint rate);
 GValue* ghb_lookup_audio_encoder_value(gint val);
+
+void ghb_init_lang_list_box(GtkListBox *list_box);
+
+void ghb_init_combo_box(GtkComboBox *combo);
+void ghb_audio_encoder_opts_set(GtkComboBox *combo);
+void ghb_audio_bitrate_opts_set(GtkComboBox *combo, gboolean extra);
+void ghb_audio_bitrate_opts_filter(GtkComboBox *combo, gint first_rate, gint last_rate);
+void ghb_mix_opts_set(GtkComboBox *combo);
+void ghb_mix_opts_filter(GtkComboBox *combo, gint acodec);
+void ghb_audio_samplerate_opts_set(GtkComboBox *combo);
+
+int ghb_lookup_audio_lang(const GValue *glang);
+const iso639_lang_t* ghb_iso639_lookup_by_int(int idx);
+void ghb_update_display_aspect_label(signal_user_data_t *ud);
+gchar* ghb_create_title_label(hb_title_t *title);
 
 #endif // _HBBACKEND_H_

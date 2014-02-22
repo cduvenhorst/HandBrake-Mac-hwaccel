@@ -17,12 +17,12 @@ namespace HandBrakeWPF.ViewModels
     using System.Threading;
     using System.Windows;
 
-    using HandBrake.ApplicationServices;
     using HandBrake.ApplicationServices.Model;
     using HandBrake.ApplicationServices.Model.Encoding;
     using HandBrake.ApplicationServices.Services.Interfaces;
 
     using HandBrakeWPF.Factories;
+    using HandBrakeWPF.Properties;
     using HandBrakeWPF.Services;
     using HandBrakeWPF.Services.Interfaces;
     using HandBrakeWPF.ViewModels.Interfaces;
@@ -85,7 +85,7 @@ namespace HandBrakeWPF.ViewModels
         public PreviewViewModel(IErrorService errorService, IUserSettingService userSettingService)
         {
             // Preview needs a seperate instance rather than the shared singleton. This could maybe do with being refactored at some point
-            this.encodeService = new EncodeServiceWrapper(userSettingService); 
+            this.encodeService = new EncodeServiceWrapper(userSettingService);
 
             this.errorService = errorService;
             this.userSettingService = userSettingService;
@@ -262,13 +262,13 @@ namespace HandBrakeWPF.ViewModels
             {
                 this.IsEncoding = false;
                 this.errorService.ShowMessageBox("Unable to delete previous preview file. You may need to restart the application.",
-                                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                               Resources.Error, MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
             if (this.Task == null || string.IsNullOrEmpty(Task.Source))
             {
                 this.errorService.ShowMessageBox("You must first scan a source and setup your encode before creating a perview.",
-                               "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                               Resources.Error, MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
@@ -326,7 +326,7 @@ namespace HandBrakeWPF.ViewModels
                     }
                     else
                     {
-                        if (!File.Exists(UserSettingService.GetUserSetting<string>(UserSettingConstants.VLC_Path)))
+                        if (!File.Exists(UserSettingService.GetUserSetting<string>(UserSettingConstants.VLCPath)))
                         {
                             // Attempt to find VLC if it doesn't exist in the default set location.
                             string vlcPath;
@@ -343,18 +343,18 @@ namespace HandBrakeWPF.ViewModels
 
                             if (File.Exists(vlcPath))
                             {
-                                UserSettingService.SetUserSetting(UserSettingConstants.VLC_Path, vlcPath);
+                                UserSettingService.SetUserSetting(UserSettingConstants.VLCPath, vlcPath);
                             }
                             else
                             {
                                 this.errorService.ShowMessageBox("Unable to detect VLC Player. \nPlease make sure VLC is installed and the directory specified in HandBrake's options is correct. (See: \"Tools Menu > Options > Picture Tab\")",
-                                                                 "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                                                 Resources.Error, MessageBoxButton.OK, MessageBoxImage.Warning);
                             }
                         }
 
-                        if (File.Exists(UserSettingService.GetUserSetting<string>(UserSettingConstants.VLC_Path)))
+                        if (File.Exists(UserSettingService.GetUserSetting<string>(UserSettingConstants.VLCPath)))
                         {
-                            ProcessStartInfo vlc = new ProcessStartInfo(UserSettingService.GetUserSetting<string>(UserSettingConstants.VLC_Path), args);
+                            ProcessStartInfo vlc = new ProcessStartInfo(UserSettingService.GetUserSetting<string>(UserSettingConstants.VLCPath), args);
                             Process.Start(vlc);
                         }
                     }
@@ -362,7 +362,7 @@ namespace HandBrakeWPF.ViewModels
                 else
                 {
                     this.errorService.ShowMessageBox("Unable to find the preview file. Either the file was deleted or the encode failed. Check the activity log for details.",
-                                 "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                 Resources.Error, MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
         }
@@ -379,7 +379,7 @@ namespace HandBrakeWPF.ViewModels
             if (encodeService.IsEncoding)
             {
                 this.errorService.ShowMessageBox("Handbrake is already encoding a video! Only one file can be encoded at any one time.",
-                                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                               Resources.Error, MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 

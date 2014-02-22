@@ -2,19 +2,26 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>Globals</key>
+    <dict>
+        <key>hide_settings</key>
+        <false />
+        <key>show_picture</key>
+        <false />
+        <key>scan_source</key>
+        <string></string>
+    </dict>
     <key>Initialization</key>
     <dict>
         <key>AudioTrackName</key>
-        <string></string>
-        <key>AudioEncoderActual</key>
         <string></string>
         <key>angle_count</key>
         <integer>1</integer>
         <key>angle</key>
         <integer>1</integer>
-        <key>anamorphic</key>
-        <true />
         <key>autoscale</key>
+        <true />
+        <key>UsesMaxPictureSettings</key>
         <false />
         <key>dest_dir</key>
         <string></string>
@@ -22,8 +29,6 @@
         <string>new_video.mp4</string>
         <key>end_point</key>
         <integer>100</integer>
-        <key>folder</key>
-        <string></string>
         <key>MetaName</key>
         <string></string>
         <key>MetaArtist</key>
@@ -42,10 +47,14 @@
         <string></string>
         <key>preset</key>
         <array>
+            <string>Regular</string>
             <string>Normal</string>
         </array>
+        <key>preset_reload</key>
+        <false />
         <key>preset_selection</key>
         <array>
+            <string>Regular</string>
             <string>Normal</string>
         </array>
         <key>PictureDisplayWidth</key>
@@ -58,12 +67,6 @@
         <integer>0</integer>
         <key>scale_width</key>
         <integer>0</integer>
-        <key>preview_show_crop</key>
-        <false />
-        <key>hide_settings</key>
-        <false />
-        <key>show_picture</key>
-        <false />
         <key>single_title</key>
         <integer>1</integer>
         <key>start_point</key>
@@ -74,47 +77,14 @@
         <integer>0</integer>
         <key>title</key>
         <string>none</string>
+        <key>title_selected</key>
+        <false />
         <key>volume_label</key>
         <string>New Video</string>
-        <key>x264_8x8dct</key>
-        <false />
-        <key>x264_analyse</key>
-        <string>some</string>
-        <key>x264_bframes</key>
-        <integer>0</integer>
-        <key>x264_mbtree</key>
-        <true />
-        <key>x264_bpyramid</key>
-        <false />
-        <key>x264_cabac</key>
-        <true />
-        <key>x264_deblock_alpha</key>
-        <integer>0</integer>
-        <key>x264_deblock_beta</key>
-        <integer>0</integer>
-        <key>x264_direct</key>
-        <string>spatial</string>
-        <key>x264_b_adapt</key>
-        <string>1</string>
-        <key>x264_me</key>
-        <string>hex</string>
-        <key>x264_merange</key>
-        <integer>16</integer>
-        <key>x264_mixed_refs</key>
-        <false />
-        <key>x264_no_dct_decimate</key>
-        <false />
-        <key>x264_no_fast_pskip</key>
-        <false />
-        <key>x264_refs</key>
-        <integer>1</integer>
-        <key>x264_subme</key>
-        <integer>6</integer>
-        <key>x264_trellis</key>
-        <integer>0</integer>
-        <key>x264_weighted_bframes</key>
-        <false />
         <key>audio_list</key>
+        <array>
+        </array>
+        <key>chapter_list</key>
         <array>
         </array>
         <key>subtitle_list</key>
@@ -137,13 +107,19 @@
         <key>VideoFrameratePFR</key>
         <false />
         <key>VideoFramerateVFR</key>
+        <true />
+        <key>PictureDeinterlaceDecomb</key>
+        <false />
+        <key>x264PresetSlider</key>
+        <integer>0</integer>
+        <key>x264ZeroLatency</key>
+        <false />
+        <key>x264FastDecode</key>
         <false />
     </dict>
     <key>Preferences</key>
     <dict>
         <key>HideAdvancedVideoSettings</key>
-        <false />
-        <key>AdvancedAutoPassthru</key>
         <false />
         <key>AutoScan</key>
         <false />
@@ -179,8 +155,6 @@
         <string>1</string>
         <key>LogLongevity</key>
         <string>immortal</string>
-        <key>nocheckvquality</key>
-        <false />
         <key>use_dvdnav</key>
         <true />
         <key>reduce_hd_preview</key>
@@ -190,6 +164,8 @@
         <key>preview_count</key>
         <integer>10</integer>
         <key>preview_fullscreen</key>
+        <false />
+        <key>preview_show_crop</key>
         <false />
         <key>preview_x</key>
         <integer>-1</integer>
@@ -215,12 +191,6 @@
         <string>0.1</string>
         <key>PreferredLanguage</key>
         <string>und</string>
-        <key>AudioDUB</key>
-        <false />
-        <key>NotAudioDUB</key>
-        <true />
-        <key>constant_rate_factor</key>
-        <true />
         <key>WhenComplete</key>
         <string>notify</string>
         <key>SrtDir</key>
@@ -229,29 +199,6 @@
         <integer>1</integer>
         <key>window_height</key>
         <integer>1</integer>
-    </dict>
-    <key>XlatPresets</key>
-    <dict>
-        <key>autoscale</key>
-        <false />
-        <key>vquality_type_bitrate</key>
-        <false />
-        <key>vquality_type_constant</key>
-        <false />
-        <key>VideoFramerateCFR</key>
-        <false />
-        <key>VideoFrameratePFR</key>
-        <false />
-        <key>VideoFramerateVFR</key>
-        <false />
-        <key>PictureDeinterlaceDecomb</key>
-        <false />
-        <key>x264PresetSlider</key>
-        <integer>0</integer>
-        <key>x264ZeroLatency</key>
-        <false />
-        <key>x264FastDecode</key>
-        <false />
     </dict>
     <key>Presets</key>
     <dict>
@@ -268,7 +215,7 @@
         <key>PictureLooseCrop</key>
         <false />
         <key>PictureModulus</key>
-        <integer>16</integer>
+        <integer>2</integer>
         <key>PictureDeblock</key>
         <integer>0</integer>
         <key>PictureDecombDeinterlace</key>
@@ -335,6 +282,10 @@
         <true />
         <key>AudioEncoderFallback</key>
         <string>ffac3</string>
+        <key>AudioLanguageList</key>
+        <array>
+            <string>und</string>
+        </array>
         <key>AudioList</key>
         <array>
             <dict>
@@ -342,15 +293,11 @@
                 <string>192</string>
                 <key>AudioEncoder</key>
                 <string>copy:ac3</string>
-                <key>AudioTrack</key>
-                <integer>1</integer>
-                <key>AudioTrackDescription</key>
-                <string></string>
                 <key>AudioTrackQualityEnable</key>
                 <false />
                 <key>AudioTrackQuality</key>
                 <real>-1</real>
-                <key>AudioTrackGain</key>
+                <key>AudioTrackGainSlider</key>
                 <real>0</real>
                 <key>AudioTrackDRCSlider</key>
                 <real>0</real>
@@ -360,35 +307,34 @@
                 <string>source</string>
             </dict>
         </array>
+        <key>AudioSecondaryEncoderMode</key>
+        <true />
+        <key>AudioTrackSelectionBehavior</key>
+        <string>first</string>
         <key>PresetDescription</key>
         <string></string>
         <key>PresetName</key>
         <string>Name Missing</string>
         <key>Type</key>
         <integer>1</integer>
-        <key>SubtitleList</key>
+        <key>SubtitleLanguageList</key>
         <array>
-            <dict>
-                <key>SubtitleLanguage</key>
-                <string>und</string>
-                <key>SubtitleForced</key>
-                <true />
-                <key>SubtitleSource</key>
-                <integer>0</integer>
-                <key>SubtitleBurned</key>
-                <true />
-                <key>SubtitleDefaultTrack</key>
-                <false />
-            </dict>
+            <string>und</string>
         </array>
+        <key>SubtitleTrackSelectionBehavior</key>
+        <string>none</string>
+        <key>SubtitleAddCC</key>
+        <false />
+        <key>SubtitleAddForeignAudioSearch</key>
+        <false />
+        <key>SubtitleAddForeignAudioSubtitle</key>
+        <false />
         <key>VideoTurboTwoPass</key>
         <false />
         <key>UsesPictureFilters</key>
         <true />
         <key>UsesPictureSettings</key>
         <integer>2</integer>
-        <key>UsesMaxPictureSettings</key>
-        <false />
         <key>VideoTwoPass</key>
         <false />
         <key>VideoAvgBitrate</key>
@@ -399,8 +345,6 @@
         <integer>2</integer>
         <key>VideoQualitySlider</key>
         <real>0.60</real>
-        <key>VideoTargetSize</key>
-        <integer>700</integer>
         <key>lavcOption</key>
         <string></string>
         <key>x264Option</key>

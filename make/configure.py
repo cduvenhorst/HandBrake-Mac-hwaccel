@@ -247,6 +247,7 @@ class Action( object ):
                 self._dumpSession( cfg.infof )
                 cfg.errln( 'unable to continue' )
             self._dumpSession( cfg.verbosef )
+            self._failSession()
         else:
             cfg.infof( '(%s) %s\n', self.msg_pass, self.msg_end )
             self._dumpSession( cfg.verbosef )
@@ -259,6 +260,9 @@ class Action( object ):
             printf( '  : <NO-OUTPUT>\n' )
 
     def _parseSession( self ):
+        pass
+
+    def _failSession( self ):
         pass
 
     def run( self ):
@@ -743,6 +747,30 @@ class RepoProbe( ShellProbe ):
 
         self.msg_end = self.url
 
+    def _failSession( self ):
+        # Look for svn info in version file.
+        #
+        # Version file would be created manually by source packager.
+        # e.g.
+        # $ svn info HandBrake > HandBrake/version.txt
+        # $ tar -czf handbrake-source.tgz --exclude .svn HandBrake
+        cfg.infof( 'probe: version.txt...' )
+        try:
+            hvp = os.path.join( cfg.src_dir, 'version.txt' )
+            if os.path.isfile( hvp ) and os.path.getsize( hvp ) > 0:
+                file = open( hvp, 'r' )
+                self.session = file.readlines()
+                file.close()
+                if self.session:
+                    self._parseSession()
+            if self.rev != 0:
+                cfg.infof( '(pass)\n' )
+            else:
+                cfg.infof( '(fail)\n' )
+
+        except:
+            cfg.infof( '(fail)\n' )
+
 ###############################################################################
 ##
 ## project object.
@@ -1173,14 +1201,15 @@ def createCLI():
     grp.add_option( '--enable-gtk-mingw', default=False, action='store_true', help=h )
     h = IfHost( 'disable gstreamer (live preview)', '*-*-linux*', none=optparse.SUPPRESS_HELP ).value
     grp.add_option( '--disable-gst', default=False, action='store_true', help=h )
-    h = IfHost( 'enable use of ffmpeg mpeg2 decoding', '*-*-*', none=optparse.SUPPRESS_HELP ).value
-    grp.add_option( '--enable-ff-mpeg2', default=False, action='store_true', help=h )
     h = IfHost( 'enable use of Intel Quick Sync Video hardware acceleration', '*-*-*', none=optparse.SUPPRESS_HELP ).value
     grp.add_option( '--enable-qsv', default=False, action='store_true', help=h )
 
     h = IfHost( 'enable HWD features', '*-*-*', none=optparse.SUPPRESS_HELP ).value
     grp.add_option( '--enable-hwd', default=False, action='store_true', help=h )
     
+    h = IfHost( 'enable use of x265 encoding', '*-*-*', none=optparse.SUPPRESS_HELP ).value
+    grp.add_option( '--enable-x265', default=False, action='store_true', help=h )
+
     h = IfHost( 'enable use of fdk-aac encoder', '*-*-*', none=optparse.SUPPRESS_HELP ).value
     grp.add_option( '--enable-fdk-aac', dest="enable_fdk_aac", default=not host.match( '*-*-darwin*' ), action='store_true', help=h )
     grp.add_option( '--disable-fdk-aac', dest="enable_fdk_aac", action='store_false' )
@@ -1234,6 +1263,8 @@ def createCLI():
     grp.add_option( '--enable-local-yasm', default=False, action='store_true', help=h )
     h = IfHost( 'Build and use local autotools', '*-*-*', none=optparse.SUPPRESS_HELP ).value
     grp.add_option( '--enable-local-autotools', default=False, action='store_true', help=h )
+    h = IfHost( 'Build and use local pkg-config', '*-*-darwin*', none=optparse.SUPPRESS_HELP ).value
+    grp.add_option( '--enable-local-pkgconfig', default=False, action='store_true', help=h )
 
     cli.add_option_group( grp )
 
@@ -1404,6 +1435,7 @@ try:
         autoconf = ToolProbe( 'AUTOCONF.exe', 'autoconf', abort=False )
         automake = ToolProbe( 'AUTOMAKE.exe', 'automake', abort=False )
         libtool  = ToolProbe( 'LIBTOOL.exe',  'libtool', abort=False )
+        pkgconfig = ToolProbe( 'PKGCONFIG.exe', 'pkg-config', abort=False )
 
         xcodebuild = ToolProbe( 'XCODEBUILD.exe', 'xcodebuild', abort=False )
         lipo       = ToolProbe( 'LIPO.exe',       'lipo', abort=False )
@@ -1474,6 +1506,11 @@ try:
     if not options.enable_local_autotools and (Tools.autoconf.fail or Tools.automake.fail or Tools.libtool.fail):
         stdout.write( 'note: enabling local autotools\n' )
         options.enable_local_autotools = True
+
+    ## enable local pkg-config when probe fails
+    if not options.enable_local_pkgconfig and Tools.pkgconfig.fail:
+        stdout.write( 'note: enabling local pkgconfig\n' )
+        options.enable_local_pkgconfig = True
 
     if build.system == 'mingw':
         dlfcn_test = """
@@ -1638,12 +1675,12 @@ int main ()
     doc.addBlank()
     doc.add( 'FEATURE.local_yasm', int( options.enable_local_yasm ))
     doc.add( 'FEATURE.local_autotools', int( options.enable_local_autotools ))
+    doc.add( 'FEATURE.local_pkgconfig', int( options.enable_local_pkgconfig ))
     doc.add( 'FEATURE.asm',        'disabled' )
     doc.add( 'FEATURE.gtk',        int( not options.disable_gtk ))
     doc.add( 'FEATURE.gtk.update.checks', int( not options.disable_gtk_update_checks ))
     doc.add( 'FEATURE.gtk.mingw',  int( options.enable_gtk_mingw ))
     doc.add( 'FEATURE.gst',        int( not options.disable_gst ))
-    doc.add( 'FEATURE.ff.mpeg2',   int( options.enable_ff_mpeg2 ))
     doc.add( 'FEATURE.fdk_aac',    int( options.enable_fdk_aac ))
     doc.add( 'FEATURE.libav_aac',  int( options.enable_libav_aac ))
     doc.add( 'FEATURE.faac',       int( options.enable_faac ))
@@ -1653,6 +1690,7 @@ int main ()
     doc.add( 'FEATURE.qsv',        int( options.enable_qsv ))
     doc.add( 'FEATURE.hwd',        int( options.enable_hwd ))
     doc.add( 'FEATURE.xcode',      int( not (Tools.xcodebuild.fail or options.disable_xcode or options.cross) ))
+    doc.add( 'FEATURE.x265',       int( options.enable_x265 ))
 
     if not Tools.xcodebuild.fail and not options.disable_xcode:
         doc.addBlank()
@@ -1702,6 +1740,11 @@ int main ()
         doc.add( 'GCC.archs', '' )
         doc.add( 'GCC.sysroot', '' )
         doc.add( 'GCC.minver', '' )
+
+    if build.match( 'i?86-*' ):
+        doc.add( 'LIBHB.GCC.D', 'ARCH_X86_32', append=True )
+    elif build.match( 'x86_64-*' ):
+        doc.add( 'LIBHB.GCC.D', 'ARCH_X86_64', append=True )
 
     if options.enable_asm and ( not Tools.yasm.fail or options.enable_local_yasm ):
         asm = ''

@@ -1,6 +1,6 @@
 /* hb.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -51,7 +51,7 @@ struct hb_handle_s
     int            job_count;
     int            job_count_permanent;
     volatile int   work_die;
-    int            work_error;
+    hb_error_code  work_error;
     hb_thread_t  * work_thread;
 
     hb_lock_t    * state_lock;
@@ -286,23 +286,6 @@ uint64_t hb_ff_mixdown_xlat(int hb_mixdown, int *downmix_mode)
     if (downmix_mode != NULL)
         *downmix_mode = mode;
     return ff_layout;
-}
-
-uint64_t hb_ff_layout_xlat(uint64_t ff_channel_layout, int nchannels)
-{
-    uint64_t hb_layout = ff_channel_layout;
-    if (!hb_layout || av_get_channel_layout_nb_channels(hb_layout) != nchannels)
-    {
-        hb_layout = av_get_default_channel_layout(nchannels);
-        if (!hb_layout)
-        {
-            // This will likely not sound very good ;)
-            hb_layout = AV_CH_LAYOUT_STEREO;
-            hb_error("hb_ff_layout_xlat: unsupported layout 0x%"PRIx64" with %d channels",
-                     ff_channel_layout, nchannels);
-        }
-    }
-    return hb_layout;
 }
 
 /*
@@ -786,19 +769,11 @@ void hb_get_preview( hb_handle_t * h, hb_job_t * job, int picture,
 
     if( job->deinterlace )
     {
-        int width = (in_buf->plane[0].width + 3) & ~0x3;
-        int height = (in_buf->plane[0].height + 3) & ~0x3;
-
         // Deinterlace and crop
-        // avpicture_deinterlace requires 4 pixel aligned width and height
-        // we have aligned all buffers to 16 byte width and height strides
-        // so there is room in the buffers to accomodate a litte
-        // overscan.
         deint_buf = hb_frame_buffer_init( AV_PIX_FMT_YUV420P,
                                           title->width, title->height );
+        hb_deinterlace(deint_buf, in_buf);
         hb_avpicture_fill( &pic_deint, deint_buf );
-        avpicture_deinterlace( &pic_deint, &pic_in, AV_PIX_FMT_YUV420P,
-            width, height );
 
         av_picture_crop( &pic_crop, &pic_deint, AV_PIX_FMT_YUV420P,
                 job->crop[0], job->crop[2] );
@@ -1423,18 +1398,18 @@ void hb_add( hb_handle_t * h, hb_job_t * job )
     job_copy->list_attachment = hb_attachment_list_copy( job->list_attachment );
     job_copy->metadata = hb_metadata_copy( job->metadata );
 
-    if ( job->file )
-        job_copy->file  = strdup( job->file );
-    if ( job->advanced_opts )
-        job_copy->advanced_opts  = strdup( job->advanced_opts );
-    if ( job->x264_preset )
-        job_copy->x264_preset  = strdup( job->x264_preset );
-    if ( job->x264_tune )
-        job_copy->x264_tune  = strdup( job->x264_tune );
-    if ( job->h264_profile )
-        job_copy->h264_profile  = strdup( job->h264_profile );
-    if ( job->h264_level )
-        job_copy->h264_level  = strdup( job->h264_level );
+    if (job->encoder_preset != NULL)
+        job_copy->encoder_preset = strdup(job->encoder_preset);
+    if (job->encoder_tune != NULL)
+        job_copy->encoder_tune = strdup(job->encoder_tune);
+    if (job->encoder_options != NULL)
+        job_copy->encoder_options = strdup(job->encoder_options);
+    if (job->encoder_profile != NULL)
+        job_copy->encoder_profile = strdup(job->encoder_profile);
+    if (job->encoder_level != NULL)
+        job_copy->encoder_level = strdup(job->encoder_level);
+    if (job->file != NULL)
+        job_copy->file = strdup(job->file);
 
     job_copy->h     = h;
     job_copy->pause = h->pause_lock;
@@ -1659,12 +1634,10 @@ int hb_global_init()
     hb_register(&hb_reader);
     hb_register(&hb_sync_video);
     hb_register(&hb_sync_audio);
-    hb_register(&hb_deca52);
     hb_register(&hb_decavcodecv);
     hb_register(&hb_decavcodeca);
     hb_register(&hb_declpcm);
     hb_register(&hb_deccc608);
-    hb_register(&hb_decmpeg2);
     hb_register(&hb_decpgssub);
     hb_register(&hb_decsrtsub);
     hb_register(&hb_decssasub);
@@ -1686,6 +1659,9 @@ int hb_global_init()
     hb_register(&hb_enctheora);
     hb_register(&hb_encvorbis);
     hb_register(&hb_encx264);
+#ifdef USE_X265
+    hb_register(&hb_encx265);
+#endif
 #ifdef USE_QSV
     hb_register(&hb_encqsv);
 #endif

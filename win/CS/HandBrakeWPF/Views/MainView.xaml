@@ -6,7 +6,6 @@
         xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
         xmlns:Micro="clr-namespace:Caliburn.Micro;assembly=Caliburn.Micro"
              xmlns:attachedProperties="clr-namespace:HandBrakeWPF.AttachedProperties"
-             xmlns:handBrakeWpf="clr-namespace:HandBrakeWPF"
              AllowDrop="True"
         FontSize="11"
         Micro:Message.Attach="[Event Loaded] = [Action Load]"
@@ -150,19 +149,8 @@
                     <MenuItem Header="_Set Current as Default" Micro:Message.Attach="[Event Click] = [Action PresetSetDefault]" />
                     <MenuItem Header="_Reset Built-In Presets" Micro:Message.Attach="[Event Click] = [Action PresetReset]" />
                     <Separator />
-                    <MenuItem IsCheckable="True" x:Name="showPresetPanelMenuItem" IsChecked="{Binding IsPresetPanelShowing}">
-                        <MenuItem.Style>
-                            <Style TargetType="MenuItem">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsChecked, ElementName=showPresetPanelMenuItem}" Value="True">
-                                        <Setter Property="Header" Value="_Hide Preset Panel"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding IsChecked, ElementName=showPresetPanelMenuItem}" Value="False">
-                                        <Setter Property="Header" Value="S_how Preset Panel"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </MenuItem.Style>
+                    <MenuItem IsCheckable="True" x:Name="showPresetPanelMenuItem" IsChecked="{Binding IsPresetPanelShowing}"
+                              Header="S_how Preset Panel">
                     </MenuItem>
                 </MenuItem>
 
@@ -187,48 +175,20 @@
                      ToolBar.OverflowMode="Never"
                      ToolBarTray.IsLocked="True"
                      >
-                <Menu Background="Transparent">
-                    <MenuItem ItemsSource="{Binding SourceMenu}" attachedProperties:DriveMenu.ShowAvailableDrives="true">
-                        <MenuItem.Header>
-                            <StackPanel Orientation="Horizontal">
-                                <Image Width="32"
-                                       Height="32"
-                                       Source="Images/Movies.png"
-                                       />
-                                <Label Margin="8,0,0,0"
-                                       VerticalAlignment="Center"
-                                       Content="Source"
-                                       />
-                            </StackPanel>
-                        </MenuItem.Header>
-                        <MenuItem.Resources>
-                            <Image x:Key="Movie" x:Shared="False" MaxWidth="16" SnapsToDevicePixels="True" Source="Images/file.png" />
-                            <Image x:Key="Folder" x:Shared="False" MaxWidth="16" SnapsToDevicePixels="True" Source="Images/folder.png" />
-                            <Image x:Key="Disc" x:Shared="False" MaxWidth="16" SnapsToDevicePixels="True" Source="Images/disc_small.png" />
-                        </MenuItem.Resources>
-                        <MenuItem.ItemContainerStyle>
-                            <Style TargetType="{x:Type MenuItem}" x:Shared="True">
-                                <Setter Property="Header" Value="{Binding Text}" />
-                                <Setter Property="Command" Value="{Binding Command}"/>
-                                <Setter Property="ItemsSource" Value="{Binding Children}" />
-                                <Setter Property="InputGestureText" Value="{Binding InputGestureText}" />
-                                <Setter Property="Tag" Value="{Binding}" />
 
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Path=IsDrive}" Value="true">
-                                        <Setter Property="Icon" Value="{StaticResource Disc}"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding Path=IsOpenFolder}" Value="true">
-                                        <Setter Property="Icon" Value="{StaticResource Folder}"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding Path=IsOpenFile}" Value="true">
-                                        <Setter Property="Icon" Value="{StaticResource Movie}"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </MenuItem.ItemContainerStyle>
-                    </MenuItem>
-                </Menu>
+                <Button Name="SelectSource"
+                        Micro:Message.Attach="[Event Click] = [Action SelectSourceWindow]">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Width="32"
+                               Height="32"
+                               Source="Images/Movies.png"
+                               />
+                        <Label Margin="8,0,0,0"
+                               VerticalAlignment="Center"
+                               Content="Source"
+                               />
+                    </StackPanel>
+                </Button>
 
                 <Separator />
 
@@ -308,11 +268,6 @@
                                                                               SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"
                                                                               />
                                                         </Border>
-                                                        <ControlTemplate.Triggers>
-                                                            <Trigger Property="IsPressed" Value="True">
-                                                                <Setter TargetName="border" Property="Background" Value="#FF98B5E2" />
-                                                            </Trigger>
-                                                        </ControlTemplate.Triggers>
                                                     </ControlTemplate>
                                                 </Setter.Value>
                                             </Setter>
@@ -409,6 +364,7 @@
                                   SelectedItem="{Binding Path=SelectedTitle}"
                                   />
                         <Label Margin="8,0,0,0" Content="Angle" />
+
                         <ComboBox Name="Angles"
                                   MinWidth="60"
                                   Margin="8,0,0,0"
@@ -667,6 +623,11 @@
                 </Grid>
             </GroupBox>
         </Grid>
+
+        <!-- Source Selection-->
+        <Controls:SourceSelection Grid.Row="1" MinWidth="300" HorizontalAlignment="Left" VerticalAlignment="Stretch" BorderThickness="1" BorderBrush="DarkGray"
+                                  Visibility="{Binding ShowSourceSelection, Converter={StaticResource boolToVisConverter}}" 
+                                  />
 
         <!--  StatusPanel  -->
         <Controls:StatusPanel x:Name="loadingPanel"

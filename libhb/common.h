@@ -1,6 +1,6 @@
 /* common.h
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -137,12 +137,12 @@ void hb_limit_rational64( int64_t *x, int64_t *y, int64_t num, int64_t den, int6
 #define HB_KEEP_HEIGHT 1
 void hb_fix_aspect( hb_job_t * job, int keep );
 
-void hb_job_set_advanced_opts( hb_job_t *job, const char *advanced_opts );
-void hb_job_set_x264_preset( hb_job_t *job, const char *preset );
-void hb_job_set_x264_tune( hb_job_t *job, const char *tune );
-void hb_job_set_h264_profile( hb_job_t *job, const char *profile );
-void hb_job_set_h264_level( hb_job_t *job, const char *level );
-void hb_job_set_file( hb_job_t *job, const char *file );
+void hb_job_set_encoder_preset (hb_job_t *job, const char *preset);
+void hb_job_set_encoder_tune   (hb_job_t *job, const char *tune);
+void hb_job_set_encoder_options(hb_job_t *job, const char *options);
+void hb_job_set_encoder_profile(hb_job_t *job, const char *profile);
+void hb_job_set_encoder_level  (hb_job_t *job, const char *level);
+void hb_job_set_file           (hb_job_t *job, const char *file);
 
 hb_audio_t *hb_audio_copy(const hb_audio_t *src);
 hb_list_t *hb_audio_list_copy(const hb_list_t *src);
@@ -160,6 +160,8 @@ int hb_srt_add(const hb_job_t * job, const hb_subtitle_config_t * subtitlecfg,
 int hb_subtitle_can_force( int source );
 int hb_subtitle_can_burn( int source );
 int hb_subtitle_can_pass( int source, int mux );
+
+int hb_audio_can_apply_drc(uint32_t codec, uint32_t codec_param, int encoder);
 
 hb_attachment_t *hb_attachment_copy(const hb_attachment_t *src);
 
@@ -214,6 +216,7 @@ struct hb_encoder_s
 {
     const char *name;       // note: used in presets
     const char *short_name; // note: used in CLI
+    const char *long_name;  // used in log
     int         codec;      // HB_*CODEC_* define
     int         muxers;     // supported muxers
 };
@@ -223,6 +226,7 @@ struct hb_container_s
 {
     const char *name;
     const char *short_name;
+    const char *long_name;
     const char *default_extension;
     int         format;
 };
@@ -253,6 +257,8 @@ struct hb_subtitle_config_s
  *
  * Use hb_*_get_name() and hb_*_get_short_name() to get the corresponding value.
  * Returns NULL if the value is invalid.
+ *
+ * Use hb_*_get_long_name() when the name is not descriptive enough for you.
  *
  * hb_*_sanitize_name() are convenience functions for use when dealing
  * with full names (e.g. to translate legacy values while loading a preset).
@@ -326,6 +332,7 @@ int                 hb_video_encoder_get_default(int muxer);
 int                 hb_video_encoder_get_from_name(const char *name);
 const char*         hb_video_encoder_get_name(int encoder);
 const char*         hb_video_encoder_get_short_name(int encoder);
+const char*         hb_video_encoder_get_long_name(int encoder);
 const char*         hb_video_encoder_sanitize_name(const char *name);
 const hb_encoder_t* hb_video_encoder_get_next(const hb_encoder_t *last);
 
@@ -341,6 +348,7 @@ int                 hb_audio_encoder_get_default(int muxer);
 int                 hb_audio_encoder_get_from_name(const char *name);
 const char*         hb_audio_encoder_get_name(int encoder);
 const char*         hb_audio_encoder_get_short_name(int encoder);
+const char*         hb_audio_encoder_get_long_name(int encoder);
 const char*         hb_audio_encoder_sanitize_name(const char *name);
 const hb_encoder_t* hb_audio_encoder_get_next(const hb_encoder_t *last);
 
@@ -356,6 +364,7 @@ int                   hb_container_get_from_name(const char *name);
 int                   hb_container_get_from_extension(const char *extension); // not really a container name
 const char*           hb_container_get_name(int format);
 const char*           hb_container_get_short_name(int format);
+const char*           hb_container_get_long_name(int format);
 const char*           hb_container_get_default_extension(int format);
 const char*           hb_container_sanitize_name(const char *name);
 const hb_container_t* hb_container_get_next(const hb_container_t *last);
@@ -432,11 +441,11 @@ struct hb_job_s
          vrate, vrate_base: output framerate is vrate / vrate_base
          cfr:               0 (vfr), 1 (cfr), 2 (pfr) [see render.c]
          pass:              0, 1 or 2 (or -1 for scan)
-         advanced_opts:     string of extra advanced encoder options
-         areBframes:        boolean to note if b-frames are included in advanced_opts */
+         areBframes:        boolean to note if b-frames are used */
 #define HB_VCODEC_MASK         0x0000FFF
 #define HB_VCODEC_X264         0x0000001
 #define HB_VCODEC_THEORA       0x0000002
+#define HB_VCODEC_X265         0x0000004
 #define HB_VCODEC_FFMPEG_MPEG4 0x0000010
 #define HB_VCODEC_FFMPEG_MPEG2 0x0000020
 #define HB_VCODEC_FFMPEG_MASK  0x00000F0
@@ -455,11 +464,11 @@ struct hb_job_s
     int             cfr;
     int             pass;
     int             fastfirstpass;
-    char            *x264_preset;
-    char            *x264_tune;
-    char            *advanced_opts;
-    char            *h264_profile;
-    char            *h264_level;
+    char           *encoder_preset;
+    char           *encoder_tune;
+    char           *encoder_options;
+    char           *encoder_profile;
+    char           *encoder_level;
     int             areBframes;
 
     int             color_matrix_code;
@@ -501,7 +510,7 @@ struct hb_job_s
      *     mux:  output file format
      *     file: file path
      */
-#define HB_MUX_MASK     0xFF0000
+#define HB_MUX_MASK     0xFF0001
 #define HB_MUX_MP4V2    0x010000
 #define HB_MUX_AV_MP4   0x020000
 #define HB_MUX_MASK_MP4 0x030000
@@ -509,6 +518,7 @@ struct hb_job_s
 #define HB_MUX_AV_MKV   0x200000
 #define HB_MUX_MASK_MKV 0x300000
 #define HB_MUX_MASK_AV  0x220000
+#define HB_MUX_X265     0x000001
 /* default muxer for each container */
 #define HB_MUX_MP4      HB_MUX_AV_MP4
 #define HB_MUX_MKV      HB_MUX_AV_MKV
@@ -548,7 +558,6 @@ struct hb_job_s
     {
         int decode;
         int async_depth;
-        const char *preset;
         av_qsv_context *ctx;
         // shared encoding parameters
         // initialized by the QSV encoder, then used upstream (e.g. by filters)
@@ -607,7 +616,7 @@ struct hb_job_s
 #define HB_ACODEC_FFFLAC24  0x00200000
 #define HB_ACODEC_FDK_AAC   0x00400000
 #define HB_ACODEC_FDK_HAAC  0x00800000
-#define HB_ACODEC_FF_MASK   0x00FF2000
+#define HB_ACODEC_FF_MASK   0x00FF2800
 #define HB_ACODEC_PASS_FLAG 0x40000000
 #define HB_ACODEC_PASS_MASK (HB_ACODEC_MP3 | HB_ACODEC_FFAAC | HB_ACODEC_DCA_HD | HB_ACODEC_AC3 | HB_ACODEC_DCA)
 #define HB_ACODEC_AUTO_PASS (HB_ACODEC_PASS_MASK | HB_ACODEC_PASS_FLAG)
@@ -678,6 +687,7 @@ struct hb_audio_config_s
         PRIVATE int samplerate; /* Input sample rate (Hz) */
         PRIVATE int samples_per_frame; /* Number of samples per frame */
         PRIVATE int bitrate; /* Input bitrate (bps) */
+        PRIVATE int matrix_encoding; /* Source matrix encoding mode, set by the audio decoder */
         PRIVATE uint64_t channel_layout; /* Source channel layout, set by the audio decoder */
         PRIVATE hb_chan_map_t * channel_map; /* Source channel map, set by the audio decoder */
     } in;
@@ -1011,6 +1021,7 @@ typedef struct hb_work_info_s
             uint64_t channel_layout;
             hb_chan_map_t * channel_map;
             int samples_per_frame;
+            int matrix_encoding;
         };
     };
 } hb_work_info_t;
@@ -1064,7 +1075,6 @@ struct hb_work_object_s
 
 extern hb_work_object_t hb_sync_video;
 extern hb_work_object_t hb_sync_audio;
-extern hb_work_object_t hb_decmpeg2;
 extern hb_work_object_t hb_decvobsub;
 extern hb_work_object_t hb_encvobsub;
 extern hb_work_object_t hb_deccc608;
@@ -1077,8 +1087,7 @@ extern hb_work_object_t hb_encavcodec;
 extern hb_work_object_t hb_encqsv;
 extern hb_work_object_t hb_encx264;
 extern hb_work_object_t hb_enctheora;
-extern hb_work_object_t hb_deca52;
-extern hb_work_object_t hb_decdca;
+extern hb_work_object_t hb_encx265;
 extern hb_work_object_t hb_decavcodeca;
 extern hb_work_object_t hb_decavcodecv;
 extern hb_work_object_t hb_declpcm;
@@ -1218,5 +1227,10 @@ const char * const * hb_h264_levels();
 
 // x264 option name/synonym helper
 const char * hb_x264_encopt_name( const char * name );
+
+#ifdef USE_X265
+// x265 option name/synonym helper
+const char * hb_x265_encopt_name( const char * name );
+#endif
 
 #endif

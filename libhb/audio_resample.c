@@ -1,6 +1,6 @@
 /* audio_resample.c
  *
- * Copyright (c) 2003-2013 HandBrake Team
+ * Copyright (c) 2003-2014 HandBrake Team
  * This file is part of the HandBrake source code
  * Homepage: <http://handbrake.fr/>
  * It may be used under the terms of the GNU General Public License v2.
@@ -62,6 +62,7 @@ hb_audio_resample_t* hb_audio_resample_init(enum AVSampleFormat sample_fmt,
     // set default input characteristics
     resample->in.sample_fmt         = resample->out.sample_fmt;
     resample->in.channel_layout     = resample->out.channel_layout;
+    resample->in.lfe_mix_level      = HB_MIXLEV_ZERO;
     resample->in.center_mix_level   = HB_MIXLEV_DEFAULT;
     resample->in.surround_mix_level = HB_MIXLEV_DEFAULT;
 
@@ -75,12 +76,10 @@ fail:
 }
 
 void hb_audio_resample_set_channel_layout(hb_audio_resample_t *resample,
-                                          uint64_t channel_layout,
-                                          int channels)
+                                          uint64_t channel_layout)
 {
     if (resample != NULL)
     {
-        channel_layout = hb_ff_layout_xlat(channel_layout, channels);
         if (channel_layout == AV_CH_LAYOUT_STEREO_DOWNMIX)
         {
             // Dolby Surround is Stereo when it comes to remixing
@@ -92,10 +91,12 @@ void hb_audio_resample_set_channel_layout(hb_audio_resample_t *resample,
 
 void hb_audio_resample_set_mix_levels(hb_audio_resample_t *resample,
                                       double surround_mix_level,
-                                      double center_mix_level)
+                                      double center_mix_level,
+                                      double lfe_mix_level)
 {
     if (resample != NULL)
     {
+        resample->in.lfe_mix_level      = lfe_mix_level;
         resample->in.center_mix_level   = center_mix_level;
         resample->in.surround_mix_level = surround_mix_level;
     }
@@ -128,6 +129,7 @@ int hb_audio_resample_update(hb_audio_resample_t *resample)
         (resample->resample_needed &&
          (resample->resample.sample_fmt != resample->in.sample_fmt ||
           resample->resample.channel_layout != resample->in.channel_layout ||
+          resample->resample.lfe_mix_level != resample->in.lfe_mix_level ||
           resample->resample.center_mix_level != resample->in.center_mix_level ||
           resample->resample.surround_mix_level != resample->in.surround_mix_level));
 
@@ -161,6 +163,8 @@ int hb_audio_resample_update(hb_audio_resample_t *resample)
                        resample->in.sample_fmt, 0);
         av_opt_set_int(resample->avresample, "in_channel_layout",
                        resample->in.channel_layout, 0);
+        av_opt_set_double(resample->avresample, "lfe_mix_level",
+                          resample->in.lfe_mix_level, 0);
         av_opt_set_double(resample->avresample, "center_mix_level",
                           resample->in.center_mix_level, 0);
         av_opt_set_double(resample->avresample, "surround_mix_level",
@@ -181,6 +185,7 @@ int hb_audio_resample_update(hb_audio_resample_t *resample)
         resample->resample.channel_layout     = resample->in.channel_layout;
         resample->resample.channels           =
             av_get_channel_layout_nb_channels(resample->in.channel_layout);
+        resample->resample.lfe_mix_level      = resample->in.lfe_mix_level;
         resample->resample.center_mix_level   = resample->in.center_mix_level;
         resample->resample.surround_mix_level = resample->in.surround_mix_level;
     }

@@ -56,13 +56,11 @@ struct hb_work_private_s
 
     hb_qsv_param_t param;
     av_qsv_space enc_space;
+    hb_qsv_info_t *qsv_info;
 
     mfxEncodeCtrl force_keyframe;
-    struct
-    {
-        int     index;
-        int64_t start;
-    } next_chapter;
+    hb_list_t *delayed_chapters;
+    int64_t next_chapter_pts;
 
 #define BFRM_DELAY_MAX 16
     // for DTS generation (when MSDK API < 1.6 or VFR)
@@ -86,6 +84,13 @@ struct hb_work_private_s
     int init_done;
 
     hb_list_t *delayed_processing;
+};
+
+// used in delayed_chapters list
+struct chapter_s
+{
+    int     index;
+    int64_t start;
 };
 
 // for DTS generation (when MSDK API < 1.6 or VFR)
@@ -357,6 +362,7 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
 
     pv->job                = job;
     pv->is_sys_mem         = !hb_qsv_decode_is_enabled(job);
+    pv->qsv_info           = hb_qsv_info_get(job->vcodec);
     pv->delayed_processing = hb_list_init();
     pv->last_start         = INT64_MIN;
     pv->frames_in          = 0;
@@ -372,12 +378,12 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
     pv->force_keyframe.ExtParam    = NULL;
     pv->force_keyframe.Payload     = NULL;
 
-    pv->next_chapter.index = 0;
-    pv->next_chapter.start = INT64_MIN;
+    pv->next_chapter_pts = AV_NOPTS_VALUE;
+    pv->delayed_chapters = hb_list_init();
 
     // default encoding parameters
     if (hb_qsv_param_default_preset(&pv->param, &pv->enc_space.m_mfxVideoParam,
-                                    job->qsv.preset))
+                                     pv->qsv_info, job->encoder_preset))
     {
         hb_error("encqsvInit: hb_qsv_param_default_preset failed");
         return -1;
@@ -422,16 +428,16 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
             break;
     }
 
-    // parse user-specified advanced options, if present
-    if (job->advanced_opts != NULL && job->advanced_opts[0] != '\0')
+    // parse user-specified encoder options, if present
+    if (job->encoder_options != NULL && *job->encoder_options)
     {
         hb_dict_t *options_list;
         hb_dict_entry_t *option = NULL;
-        options_list = hb_encopts_to_dict(job->advanced_opts, job->vcodec);
+        options_list = hb_encopts_to_dict(job->encoder_options, job->vcodec);
         while ((option = hb_dict_next(options_list, option)) != NULL)
         {
-            switch (hb_qsv_param_parse(&pv->param,
-                                       option->key, option->value, job->vcodec))
+            switch (hb_qsv_param_parse(&pv->param,  pv->qsv_info,
+                                       option->key, option->value))
             {
                 case HB_QSV_PARAM_OK:
                     break;
@@ -458,7 +464,7 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
         hb_dict_free(&options_list);
     }
 
-    // reload colorimetry in case values were set in advanced_opts
+    // reload colorimetry in case values were set in encoder_options
     if (pv->param.videoSignalInfo.ColourDescriptionPresent)
     {
         job->color_matrix_code = 4;
@@ -515,39 +521,39 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
     pv->param.videoParam->mfx.FrameInfo.Height        = job->qsv.enc_info.align_height;
 
     // set H.264 profile and level
-    if (job->h264_profile != NULL && job->h264_profile[0] != '\0' &&
-        strcasecmp(job->h264_profile, "auto"))
+    if (job->encoder_profile != NULL && *job->encoder_profile &&
+        strcasecmp(job->encoder_profile, "auto"))
     {
-        if (!strcasecmp(job->h264_profile, "baseline"))
+        if (!strcasecmp(job->encoder_profile, "baseline"))
         {
             pv->param.videoParam->mfx.CodecProfile = MFX_PROFILE_AVC_BASELINE;
         }
-        else if (!strcasecmp(job->h264_profile, "main"))
+        else if (!strcasecmp(job->encoder_profile, "main"))
         {
             pv->param.videoParam->mfx.CodecProfile = MFX_PROFILE_AVC_MAIN;
         }
-        else if (!strcasecmp(job->h264_profile, "high"))
+        else if (!strcasecmp(job->encoder_profile, "high"))
         {
             pv->param.videoParam->mfx.CodecProfile = MFX_PROFILE_AVC_HIGH;
         }
         else
         {
-            hb_error("encqsvInit: bad profile %s", job->h264_profile);
+            hb_error("encqsvInit: bad profile %s", job->encoder_profile);
             return -1;
         }
     }
-    if (job->h264_level != NULL && job->h264_level[0] != '\0' &&
-        strcasecmp(job->h264_level, "auto"))
+    if (job->encoder_level != NULL && *job->encoder_level &&
+        strcasecmp(job->encoder_level, "auto"))
     {
         int err;
-        int i = hb_qsv_atoindex(hb_h264_level_names, job->h264_level, &err);
+        int i = hb_qsv_atoindex(hb_h264_level_names, job->encoder_level, &err);
         if (err || i >= (sizeof(hb_h264_level_values) /
                          sizeof(hb_h264_level_values[0])))
         {
-            hb_error("encqsvInit: bad level %s", job->h264_level);
+            hb_error("encqsvInit: bad level %s", job->encoder_level);
             return -1;
         }
-        else if (hb_qsv_info->capabilities & HB_QSV_CAP_MSDK_API_1_6)
+        else if (pv->qsv_info->capabilities & HB_QSV_CAP_MSDK_API_1_6)
         {
             pv->param.videoParam->mfx.CodecLevel = HB_QSV_CLIP3(MFX_LEVEL_AVC_1,
                                                                 MFX_LEVEL_AVC_52,
@@ -583,46 +589,91 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
         }
     }
 
+    // sanitize ICQ
+    if (!(pv->qsv_info->capabilities & HB_QSV_CAP_RATECONTROL_ICQ))
+    {
+        // ICQ not supported
+        pv->param.rc.icq = 0;
+    }
+    else
+    {
+        pv->param.rc.icq = !!pv->param.rc.icq;
+    }
+
+    // sanitize lookahead
+    if (!(pv->qsv_info->capabilities & HB_QSV_CAP_RATECONTROL_LA))
+    {
+        // lookahead not supported
+        pv->param.rc.lookahead = 0;
+    }
+    else if ((pv->param.rc.lookahead)                                       &&
+             (pv->qsv_info->capabilities & HB_QSV_CAP_RATECONTROL_LAi) == 0 &&
+             (pv->param.videoParam->mfx.FrameInfo.PicStruct != MFX_PICSTRUCT_PROGRESSIVE))
+    {
+        // lookahead enabled but we can't use it
+        hb_log("encqsvInit: LookAhead not used (LookAhead is progressive-only)");
+        pv->param.rc.lookahead = 0;
+    }
+    else
+    {
+        pv->param.rc.lookahead = !!pv->param.rc.lookahead;
+    }
+
+    // set VBV here (this will be overridden for CQP and ignored for LA)
+    // only set BufferSizeInKB, InitialDelayInKB and MaxKbps if we have
+    // them - otheriwse Media SDK will pick values for us automatically
+    if (pv->param.rc.vbv_buffer_size > 0)
+    {
+        if (pv->param.rc.vbv_buffer_init > 1.0)
+        {
+            pv->param.videoParam->mfx.InitialDelayInKB = (pv->param.rc.vbv_buffer_init / 8);
+        }
+        else if (pv->param.rc.vbv_buffer_init > 0.0)
+        {
+            pv->param.videoParam->mfx.InitialDelayInKB = (pv->param.rc.vbv_buffer_size *
+                                                          pv->param.rc.vbv_buffer_init / 8);
+        }
+        pv->param.videoParam->mfx.BufferSizeInKB = (pv->param.rc.vbv_buffer_size / 8);
+    }
+    if (pv->param.rc.vbv_max_bitrate > 0)
+    {
+        pv->param.videoParam->mfx.MaxKbps = pv->param.rc.vbv_max_bitrate;
+    }
+
     // set rate control paremeters
     if (job->vquality >= 0)
     {
-        // introduced in API 1.1
-        pv->param.videoParam->mfx.RateControlMethod = MFX_RATECONTROL_CQP;
-        pv->param.videoParam->mfx.QPI = HB_QSV_CLIP3(0, 51, job->vquality + pv->param.rc.cqp_offsets[0]);
-        pv->param.videoParam->mfx.QPP = HB_QSV_CLIP3(0, 51, job->vquality + pv->param.rc.cqp_offsets[1]);
-        pv->param.videoParam->mfx.QPB = HB_QSV_CLIP3(0, 51, job->vquality + pv->param.rc.cqp_offsets[2]);
-        // CQP + ExtBRC can cause bad output
-        pv->param.codingOption2.ExtBRC = MFX_CODINGOPTION_OFF;
-    }
-    else if (job->vbitrate > 0)
-    {
-        // sanitize lookahead
-        if (!(hb_qsv_info->capabilities & HB_QSV_CAP_OPTION2_LOOKAHEAD))
+        if (pv->param.rc.icq)
         {
-            // lookahead not supported
-            pv->param.rc.lookahead = 0;
-        }
-        else if (pv->param.rc.lookahead &&
-                 pv->param.videoParam->mfx.FrameInfo.PicStruct != MFX_PICSTRUCT_PROGRESSIVE)
-        {
-            // lookahead enabled but we can't use it
-            hb_log("encqsvInit: MFX_RATECONTROL_LA not used (LookAhead is progressive-only)");
-            pv->param.rc.lookahead = 0;
+            // introduced in API 1.8
+            if (pv->param.rc.lookahead)
+            {
+                pv->param.videoParam->mfx.RateControlMethod = MFX_RATECONTROL_LA_ICQ;
+            }
+            else
+            {
+                pv->param.videoParam->mfx.RateControlMethod = MFX_RATECONTROL_ICQ;
+            }
+            pv->param.videoParam->mfx.ICQQuality = HB_QSV_CLIP3(1, 51, job->vquality);
         }
         else
         {
-            pv->param.rc.lookahead = !!pv->param.rc.lookahead;
+            // introduced in API 1.1
+            pv->param.videoParam->mfx.RateControlMethod = MFX_RATECONTROL_CQP;
+            pv->param.videoParam->mfx.QPI = HB_QSV_CLIP3(0, 51, job->vquality + pv->param.rc.cqp_offsets[0]);
+            pv->param.videoParam->mfx.QPP = HB_QSV_CLIP3(0, 51, job->vquality + pv->param.rc.cqp_offsets[1]);
+            pv->param.videoParam->mfx.QPB = HB_QSV_CLIP3(0, 51, job->vquality + pv->param.rc.cqp_offsets[2]);
+            // CQP + ExtBRC can cause bad output
+            pv->param.codingOption2.ExtBRC = MFX_CODINGOPTION_OFF;
         }
+    }
+    else if (job->vbitrate > 0)
+    {
         if (pv->param.rc.lookahead)
         {
             // introduced in API 1.7
             pv->param.videoParam->mfx.RateControlMethod = MFX_RATECONTROL_LA;
             pv->param.videoParam->mfx.TargetKbps        = job->vbitrate;
-            if (pv->param.rc.vbv_max_bitrate > 0 ||
-                pv->param.rc.vbv_buffer_size > 0)
-            {
-                hb_log("encqsvInit: MFX_RATECONTROL_LA, ignoring VBV");
-            }
             // ignored, but some drivers will change AsyncDepth because of it
             pv->param.codingOption2.ExtBRC = MFX_CODINGOPTION_OFF;
         }
@@ -637,25 +688,6 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
             {
                 pv->param.videoParam->mfx.RateControlMethod = MFX_RATECONTROL_VBR;
             }
-            // only set BufferSizeInKB, InitialDelayInKB and MaxKbps if we have
-            // them - otheriwse Media SDK will pick values for us automatically
-            if (pv->param.rc.vbv_buffer_size > 0)
-            {
-                if (pv->param.rc.vbv_buffer_init > 1.0)
-                {
-                    pv->param.videoParam->mfx.InitialDelayInKB = (pv->param.rc.vbv_buffer_init / 8);
-                }
-                else if (pv->param.rc.vbv_buffer_init > 0.0)
-                {
-                    pv->param.videoParam->mfx.InitialDelayInKB = (pv->param.rc.vbv_buffer_size *
-                                                                  pv->param.rc.vbv_buffer_init / 8);
-                }
-                pv->param.videoParam->mfx.BufferSizeInKB = (pv->param.rc.vbv_buffer_size / 8);
-            }
-            if (pv->param.rc.vbv_max_bitrate > 0)
-            {
-                pv->param.videoParam->mfx.MaxKbps = pv->param.rc.vbv_max_bitrate;
-            }
             pv->param.videoParam->mfx.TargetKbps = job->vbitrate;
         }
     }
@@ -665,6 +697,51 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
                  job->vquality, job->vbitrate);
         return -1;
     }
+
+    // if VBV is enabled but ignored, log it
+    if (pv->param.rc.vbv_max_bitrate > 0 || pv->param.rc.vbv_buffer_size > 0)
+    {
+        switch (pv->param.videoParam->mfx.RateControlMethod)
+        {
+            case MFX_RATECONTROL_LA:
+            case MFX_RATECONTROL_LA_ICQ:
+                hb_log("encqsvInit: LookAhead enabled, ignoring VBV");
+                break;
+            case MFX_RATECONTROL_ICQ:
+                hb_log("encqsvInit: ICQ rate control, ignoring VBV");
+                break;
+            default:
+                break;
+        }
+    }
+
+    // set B-pyramid
+    if (pv->param.gop.b_pyramid < 0)
+    {
+        if (pv->param.videoParam->mfx.RateControlMethod == MFX_RATECONTROL_CQP)
+        {
+            pv->param.gop.b_pyramid = 1;
+        }
+        else
+        {
+            pv->param.gop.b_pyramid = 0;
+        }
+    }
+    pv->param.gop.b_pyramid = !!pv->param.gop.b_pyramid;
+
+    // set the GOP structure
+    if (pv->param.gop.gop_ref_dist < 0)
+    {
+        if (pv->param.videoParam->mfx.RateControlMethod == MFX_RATECONTROL_CQP)
+        {
+            pv->param.gop.gop_ref_dist = 4;
+        }
+        else
+        {
+            pv->param.gop.gop_ref_dist = 3;
+        }
+    }
+    pv->param.videoParam->mfx.GopRefDist = pv->param.gop.gop_ref_dist;
 
     // set the keyframe interval
     if (pv->param.gop.gop_pic_size < 0)
@@ -678,7 +755,7 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
         else
         {
             // set the keyframe interval based on the framerate
-            pv->param.gop.gop_pic_size = 5 * rate + 1;
+            pv->param.gop.gop_pic_size = rate;
         }
     }
     pv->param.videoParam->mfx.GopPicSize = pv->param.gop.gop_pic_size;
@@ -690,7 +767,8 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
         pv->param.videoParam->mfx.GopRefDist   = FFMIN(pv->param.videoParam->mfx.GopRefDist,
                                                        pv->param.rc.lookahead ? 8 : 16);
         pv->param.codingOption2.LookAheadDepth = FFMIN(pv->param.codingOption2.LookAheadDepth,
-                                                       pv->param.rc.lookahead ? 48 - pv->param.videoParam->mfx.GopRefDist : 0);
+                                                       pv->param.rc.lookahead ? (48 - pv->param.videoParam->mfx.GopRefDist -
+                                                                                 3 * !pv->param.videoParam->mfx.GopRefDist) : 0);
     }
     else
     {
@@ -700,7 +778,7 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
                                                        pv->param.rc.lookahead ? 60 : 0);
     }
 
-    if ((hb_qsv_info->capabilities & HB_QSV_CAP_H264_BPYRAMID) &&
+    if ((pv->qsv_info->capabilities & HB_QSV_CAP_B_REF_PYRAMID) &&
         (pv->param.videoParam->mfx.CodecProfile != MFX_PROFILE_AVC_BASELINE         &&
          pv->param.videoParam->mfx.CodecProfile != MFX_PROFILE_AVC_CONSTRAINED_HIGH &&
          pv->param.videoParam->mfx.CodecProfile != MFX_PROFILE_AVC_CONSTRAINED_BASELINE))
@@ -805,7 +883,7 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
     mfxExtCodingOptionSPSPPS sps_pps_buf, *sps_pps = &sps_pps_buf;
     version.Major = HB_QSV_MINVERSION_MAJOR;
     version.Minor = HB_QSV_MINVERSION_MINOR;
-    err = MFXInit(hb_qsv_impl_get_preferred(), &version, &session);
+    err = MFXInit(pv->qsv_info->implementation, &version, &session);
     if (err != MFX_ERR_NONE)
     {
         hb_error("encqsvInit: MFXInit failed (%d)", err);
@@ -853,7 +931,7 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
     memset(option2, 0, sizeof(mfxExtCodingOption2));
     option2->Header.BufferId = MFX_EXTBUFF_CODING_OPTION2;
     option2->Header.BufferSz = sizeof(mfxExtCodingOption2);
-    if (hb_qsv_info->capabilities & HB_QSV_CAP_MSDK_API_1_6)
+    if (pv->qsv_info->capabilities & HB_QSV_CAP_MSDK_API_1_6)
     {
         // attach to get the final output mfxExtCodingOption2 settings
         videoParam.ExtParam[videoParam.NumExtParam++] = (mfxExtBuffer*)option2;
@@ -916,7 +994,7 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
     // let the muxer know whether to expect B-frames or not
     job->areBframes = !!pv->bfrm_delay;
     // check whether we need to generate DTS ourselves (MSDK API < 1.6 or VFR)
-    pv->bfrm_workaround = job->cfr != 1 || !(hb_qsv_info->capabilities &
+    pv->bfrm_workaround = job->cfr != 1 || !(pv->qsv_info->capabilities &
                                              HB_QSV_CAP_MSDK_API_1_6);
     if (pv->bfrm_delay && pv->bfrm_workaround)
     {
@@ -936,9 +1014,30 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
            videoParam.mfx.TargetUsage, videoParam.AsyncDepth);
     hb_log("encqsvInit: GopRefDist %"PRIu16" GopPicSize %"PRIu16" NumRefFrame %"PRIu16"",
            videoParam.mfx.GopRefDist, videoParam.mfx.GopPicSize, videoParam.mfx.NumRefFrame);
-    hb_log("encqsvInit: BFrames %s BPyramid %s",
-           pv->bfrm_delay                            ? "on" : "off",
-           pv->bfrm_delay && pv->param.gop.b_pyramid ? "on" : "off");
+    if (pv->qsv_info->capabilities & HB_QSV_CAP_B_REF_PYRAMID)
+    {
+        hb_log("encqsvInit: BFrames %s BPyramid %s",
+               pv->bfrm_delay                            ? "on" : "off",
+               pv->bfrm_delay && pv->param.gop.b_pyramid ? "on" : "off");
+    }
+    else
+    {
+        hb_log("encqsvInit: BFrames %s", pv->bfrm_delay ? "on" : "off");
+    }
+    if (pv->qsv_info->capabilities & HB_QSV_CAP_OPTION2_IB_ADAPT)
+    {
+        if (pv->bfrm_delay > 0)
+        {
+            hb_log("encqsvInit: AdaptiveI %s AdaptiveB %s",
+                   hb_qsv_codingoption_get_name(option2->AdaptiveI),
+                   hb_qsv_codingoption_get_name(option2->AdaptiveB));
+        }
+        else
+        {
+            hb_log("encqsvInit: AdaptiveI %s",
+                   hb_qsv_codingoption_get_name(option2->AdaptiveI));
+        }
+    }
     if (videoParam.mfx.RateControlMethod == MFX_RATECONTROL_CQP)
     {
         char qpi[7], qpp[9], qpb[9];
@@ -957,6 +1056,14 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
                 hb_log("encqsvInit: RateControlMethod LA TargetKbps %"PRIu16" LookAheadDepth %"PRIu16"",
                        videoParam.mfx.TargetKbps, option2->LookAheadDepth);
                 break;
+            case MFX_RATECONTROL_LA_ICQ:
+                hb_log("encqsvInit: RateControlMethod LA_ICQ ICQQuality %"PRIu16" LookAheadDepth %"PRIu16"",
+                       videoParam.mfx.ICQQuality, option2->LookAheadDepth);
+                break;
+            case MFX_RATECONTROL_ICQ:
+                hb_log("encqsvInit: RateControlMethod ICQ ICQQuality %"PRIu16"",
+                       videoParam.mfx.ICQQuality);
+                break;
             case MFX_RATECONTROL_CBR:
             case MFX_RATECONTROL_VBR:
                 hb_log("encqsvInit: RateControlMethod %s TargetKbps %"PRIu16" MaxKbps %"PRIu16" BufferSizeInKB %"PRIu16" InitialDelayInKB %"PRIu16"",
@@ -968,6 +1075,30 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
                 hb_log("encqsvInit: invalid rate control method %"PRIu16"",
                        videoParam.mfx.RateControlMethod);
                 return -1;
+        }
+    }
+    if ((pv->qsv_info->capabilities & HB_QSV_CAP_OPTION2_LA_DOWNS) &&
+        (videoParam.mfx.RateControlMethod == MFX_RATECONTROL_LA ||
+         videoParam.mfx.RateControlMethod == MFX_RATECONTROL_LA_ICQ))
+    {
+        switch (option2->LookAheadDS)
+        {
+            case MFX_LOOKAHEAD_DS_UNKNOWN:
+                hb_log("encqsvInit: LookAheadDS unknown (auto)");
+                break;
+            case MFX_LOOKAHEAD_DS_OFF:
+                hb_log("encqsvInit: LookAheadDS off");
+                break;
+            case MFX_LOOKAHEAD_DS_2x:
+                hb_log("encqsvInit: LookAheadDS 2x");
+                break;
+            case MFX_LOOKAHEAD_DS_4x:
+                hb_log("encqsvInit: LookAheadDS 4x");
+                break;
+            default:
+                hb_log("encqsvInit: invalid LookAheadDS value 0x%"PRIx16"",
+                       option2->LookAheadDS);
+                break;
         }
     }
     switch (videoParam.mfx.FrameInfo.PicStruct)
@@ -989,22 +1120,22 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
     }
     hb_log("encqsvInit: CAVLC %s",
            hb_qsv_codingoption_get_name(option1->CAVLC));
-    if (videoParam.mfx.RateControlMethod != MFX_RATECONTROL_LA &&
+    if (pv->param.rc.lookahead           == 0 &&
         videoParam.mfx.RateControlMethod != MFX_RATECONTROL_CQP)
     {
         // LA/CQP and ExtBRC/MBBRC are mutually exclusive
-        if (hb_qsv_info->capabilities & HB_QSV_CAP_OPTION2_EXTBRC)
+        if (pv->qsv_info->capabilities & HB_QSV_CAP_OPTION2_EXTBRC)
         {
             hb_log("encqsvInit: ExtBRC %s",
                    hb_qsv_codingoption_get_name(option2->ExtBRC));
         }
-        if (hb_qsv_info->capabilities & HB_QSV_CAP_OPTION2_MBBRC)
+        if (pv->qsv_info->capabilities & HB_QSV_CAP_OPTION2_MBBRC)
         {
             hb_log("encqsvInit: MBBRC %s",
                    hb_qsv_codingoption_get_name(option2->MBBRC));
         }
     }
-    if (hb_qsv_info->capabilities & HB_QSV_CAP_OPTION2_TRELLIS)
+    if (pv->qsv_info->capabilities & HB_QSV_CAP_OPTION2_TRELLIS)
     {
         switch (option2->Trellis)
         {
@@ -1117,6 +1248,16 @@ void encqsvClose( hb_work_object_t * w )
                 free(item);
             }
             hb_list_close(&pv->list_dts);
+        }
+        if (pv->delayed_chapters != NULL)
+        {
+            struct chapter_s *item;
+            while ((item = hb_list_item(pv->delayed_chapters, 0)) != NULL)
+            {
+                hb_list_rem(pv->delayed_chapters, item);
+                free(item);
+            }
+            hb_list_close(&pv->delayed_chapters);
         }
     }
 
@@ -1237,19 +1378,28 @@ int encqsvWork( hb_work_object_t * w, hb_buffer_t ** buf_in,
              */
             if (in->s.new_chap > 0 && job->chapter_markers)
             {
-                if (!pv->next_chapter.index)
+                if (pv->next_chapter_pts == AV_NOPTS_VALUE)
                 {
-                    pv->next_chapter.start = work_surface->Data.TimeStamp;
-                    pv->next_chapter.index = in->s.new_chap;
-                    work_control           = &pv->force_keyframe;
+                    pv->next_chapter_pts = work_surface->Data.TimeStamp;
                 }
-                else
+                /* insert an IDR */
+                work_control = &pv->force_keyframe;
+                /*
+                 * Chapter markers are sometimes so close we can get a new
+                 * one before the previous goes through the encoding queue.
+                 *
+                 * Dropping markers can cause weird side-effects downstream,
+                 * including but not limited to missing chapters in the
+                 * output, so we need to save it somehow.
+                 */
+                struct chapter_s *item = malloc(sizeof(struct chapter_s));
+                if (item != NULL)
                 {
-                    // however unlikely, this can happen in theory
-                    hb_log("encqsvWork: got chapter %d before we could write chapter %d, dropping marker",
-                           in->s.new_chap, pv->next_chapter.index);
+                    item->index = in->s.new_chap;
+                    item->start = work_surface->Data.TimeStamp;
+                    hb_list_add(pv->delayed_chapters, item);
                 }
-                // don't let 'work_loop' put a chapter mark on the wrong buffer
+                /* don't let 'work_loop' put a chapter mark on the wrong buffer */
                 in->s.new_chap = 0;
             }
 
@@ -1370,18 +1520,10 @@ int encqsvWork( hb_work_object_t * w, hb_buffer_t ** buf_in,
                 // see nal_encode
                 buf = hb_video_buffer_init( job->width, job->height );
                 buf->size = 0;
-                buf->s.frametype = 0;
 
-                // maping of FrameType(s)
-                if(task->bs->FrameType & MFX_FRAMETYPE_IDR ) buf->s.frametype = HB_FRAME_IDR;
-                else
-                if(task->bs->FrameType & MFX_FRAMETYPE_I )   buf->s.frametype = HB_FRAME_I;
-                else
-                if(task->bs->FrameType & MFX_FRAMETYPE_P )   buf->s.frametype = HB_FRAME_P;
-                else
-                if(task->bs->FrameType & MFX_FRAMETYPE_B )   buf->s.frametype = HB_FRAME_B;
-
-                if(task->bs->FrameType & MFX_FRAMETYPE_REF ) buf->s.flags      = HB_FRAME_REF;
+                // map Media SDK's FrameType to our internal representation
+                buf->s.frametype = hb_qsv_frametype_xlat(task->bs->FrameType,
+                                                         &buf->s.flags);
 
                 parse_nalus(task->bs->Data + task->bs->DataOffset,task->bs->DataLength, buf, pv->frames_out);
 
@@ -1402,35 +1544,39 @@ int encqsvWork( hb_work_object_t * w, hb_buffer_t ** buf_in,
             buf->s.duration = duration;
             if (pv->bfrm_delay)
             {
+                if ((pv->frames_out == 0)                                  &&
+                    (pv->qsv_info->capabilities & HB_QSV_CAP_MSDK_API_1_6) &&
+                    (pv->qsv_info->capabilities & HB_QSV_CAP_B_REF_PYRAMID))
+                {
+                    // with B-pyramid, the delay may be more than 1 frame,
+                    // so compute the actual delay based on the initial DTS
+                    // provided by MSDK; also, account for rounding errors
+                    // (e.g. 24000/1001 fps @ 90kHz -> 3753.75 ticks/frame)
+                    pv->bfrm_delay = HB_QSV_CLIP3(1, BFRM_DELAY_MAX,
+                                                  ((task->bs->TimeStamp -
+                                                    task->bs->DecodeTimeStamp +
+                                                    (duration / 2)) / duration));
+
+                    // When forcing an IDR for a chapter right after another IDR
+                    // selected by MSDK, we may end up with one more consecutive
+                    // B-reference frame than the original delay accounts for;
+                    // work around it by incrementing the delay in this case
+                    if (pv->bfrm_workaround && job->chapter_markers &&
+                        pv->bfrm_delay > 1)
+                    {
+                        pv->bfrm_delay++;
+                    }
+                }
+
                 if (!pv->bfrm_workaround)
                 {
                     buf->s.renderOffset = task->bs->DecodeTimeStamp;
                 }
                 else
                 {
-                    // MSDK API < 1.6 or VFR, so generate our own DTS
-                    if ((pv->frames_out == 0)                                 &&
-                        (hb_qsv_info->capabilities & HB_QSV_CAP_MSDK_API_1_6) &&
-                        (hb_qsv_info->capabilities & HB_QSV_CAP_H264_BPYRAMID))
-                    {
-                        // with B-pyramid, the delay may be more than 1 frame,
-                        // so compute the actual delay based on the initial DTS
-                        // provided by MSDK; also, account for rounding errors
-                        // (e.g. 24000/1001 fps @ 90kHz -> 3753.75 ticks/frame)
-                        pv->bfrm_delay = ((task->bs->TimeStamp -
-                                           task->bs->DecodeTimeStamp +
-                                           (duration / 2)) / duration);
-                        pv->bfrm_delay = FFMAX(pv->bfrm_delay, 1);
-                        pv->bfrm_delay = FFMIN(pv->bfrm_delay, BFRM_DELAY_MAX);
-                        // check whether b_pyramid is respected, log if needed
-                        if ((pv->param.gop.b_pyramid != 0 && pv->bfrm_delay <= 1) ||
-                            (pv->param.gop.b_pyramid == 0 && pv->bfrm_delay >= 2))
-                        {
-                            hb_log("encqsvWork: b_pyramid %d not respected (delay: %d)",
-                                   pv->param.gop.b_pyramid, pv->bfrm_delay);
-                        }
-                    }
                     /*
+                     * MSDK API < 1.6 or VFR
+                     *
                      * Generate VFR-compatible output DTS based on input PTS.
                      *
                      * Depends on the B-frame delay:
@@ -1449,6 +1595,24 @@ int encqsvWork( hb_work_object_t * w, hb_buffer_t ** buf_in,
                     {
                         buf->s.renderOffset = hb_qsv_pop_next_dts(pv->list_dts);
                     }
+                }
+
+                // check whether B-pyramid is used even though it's disabled
+                if ((pv->param.gop.b_pyramid == 0)          &&
+                    (task->bs->FrameType & MFX_FRAMETYPE_B) &&
+                    (task->bs->FrameType & MFX_FRAMETYPE_REF))
+                {
+                    hb_log("encqsvWork: BPyramid off not respected (delay: %d)",
+                           pv->bfrm_delay);
+                }
+
+                // check for PTS < DTS
+                if (buf->s.start < buf->s.renderOffset)
+                {
+                    hb_log("encqsvWork: PTS %"PRId64" < DTS %"PRId64" for frame %d with type '%s' (bfrm_workaround: %d)",
+                           buf->s.start, buf->s.renderOffset, pv->frames_out + 1,
+                           hb_qsv_frametype_name(task->bs->FrameType),
+                           pv->bfrm_workaround);
                 }
 
                 /*
@@ -1477,11 +1641,31 @@ int encqsvWork( hb_work_object_t * w, hb_buffer_t ** buf_in,
              * presentation time stamp is at or after the marker's time stamp,
              * use this as the chapter start.
              */
-            if (pv->next_chapter.index && buf->s.frametype == HB_FRAME_IDR &&
-                pv->next_chapter.start <= buf->s.start)
+            if (pv->next_chapter_pts != AV_NOPTS_VALUE &&
+                pv->next_chapter_pts <= buf->s.start   &&
+                (task->bs->FrameType & MFX_FRAMETYPE_IDR))
             {
-                buf->s.new_chap = pv->next_chapter.index;
-                pv->next_chapter.index = 0;
+                // we're no longer looking for this chapter
+                pv->next_chapter_pts = AV_NOPTS_VALUE;
+
+                // get the chapter index from the list
+                struct chapter_s *item = hb_list_item(pv->delayed_chapters, 0);
+                if (item != NULL)
+                {
+                    // we're done with this chapter
+                    buf->s.new_chap = item->index;
+                    hb_list_rem(pv->delayed_chapters, item);
+                    free(item);
+
+                    // we may still have another pending chapter
+                    item = hb_list_item(pv->delayed_chapters, 0);
+                    if (item != NULL)
+                    {
+                        // we're looking for this one now
+                        // we still need it, don't remove it
+                        pv->next_chapter_pts = item->start;
+                    }
+                }
             }
 
                 // shift for fifo

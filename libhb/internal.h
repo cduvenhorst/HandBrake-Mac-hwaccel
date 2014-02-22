@@ -1,6 +1,6 @@
 /* internal.h
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -246,7 +246,7 @@ hb_thread_t * hb_scan_init( hb_handle_t *, volatile int * die,
                             hb_title_set_t * title_set, int preview_count, 
                             int store_previews, uint64_t min_duration );
 hb_thread_t * hb_work_init( hb_list_t * jobs,
-                            volatile int * die, int * error, hb_job_t ** job );
+                            volatile int * die, hb_error_code * error, hb_job_t ** job );
 void ReadLoop( void * _w );
 hb_work_object_t * hb_muxer_init( hb_job_t * );
 hb_work_object_t * hb_get_work( int );
@@ -386,30 +386,13 @@ union hb_esconfig_u
         uint8_t headers[3][HB_CONFIG_MAX_SIZE];
         char *language;
     } vorbis;
-
-    struct
-    {
-    	/* ac3flags stores the flags from the AC3 source, as found in scan.c */
-    	int     ac3flags;
-        // next two items are used by the bsinfo routine to accumulate small
-        // frames until we have enough to validate the crc.
-        int     len;        // space currently used in 'buf'
-        uint8_t buf[HB_CONFIG_MAX_SIZE-sizeof(int)];
-    } a52;
-
-    struct
-    {
-    	/* dcaflags stores the flags from the DCA source, as found in scan.c */
-    	int  dcaflags;
-    } dca;
-
 };
 
 enum
 {
-    WORK_SYNC_VIDEO = 1,
+    WORK_NONE = 0,
+    WORK_SYNC_VIDEO,
     WORK_SYNC_AUDIO,
-    WORK_DECMPEG2,
     WORK_DECCC608,
     WORK_DECVOBSUB,
     WORK_DECSRTSUB,
@@ -423,7 +406,6 @@ enum
     WORK_ENCX264,
     WORK_ENCVTH264,
     WORK_ENCTHEORA,
-    WORK_DECA52,
     WORK_DECAVCODEC,
     WORK_DECAVCODECV,
     WORK_DECLPCM,
@@ -496,3 +478,5 @@ DECLARE_MUX( avformat );
 void hb_muxmp4_process_subtitle_style( uint8_t *input,
                                        uint8_t *output,
                                        uint8_t *style, uint16_t *stylesize );
+
+void hb_deinterlace(hb_buffer_t *dst, hb_buffer_t *src);

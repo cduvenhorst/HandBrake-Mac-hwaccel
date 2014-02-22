@@ -13,7 +13,9 @@ namespace HandBrake.Interop.Model
 	using System.Collections.Generic;
 	using System.Linq;
 
+	using HandBrake.Interop.Converters;
 	using HandBrake.Interop.HbLib;
+	using HandBrake.Interop.Helpers;
 	using HandBrake.Interop.Model.Encoding;
 	using HandBrake.Interop.SourceData;
 
@@ -249,6 +251,17 @@ namespace HandBrake.Interop.Model
 		public static bool MixdownHasCodecSupport(HBMixdown mixdown, HBAudioEncoder encoder)
 		{
 			return HBFunctions.hb_mixdown_has_codec_support(mixdown.Id, (uint) encoder.Id) > 0;
+		}
+
+		/// <summary>
+		/// Determines if DRC can be applied to the given track with the given encoder.
+		/// </summary>
+		/// <param name="track">The track to apply DRC to.</param>
+		/// <param name="encoder">The encoder to use for DRC.</param>
+		/// <returns>True if DRC can be applied to the track with the given encoder.</returns>
+		public static bool CanApplyDrc(AudioTrack track, HBAudioEncoder encoder)
+		{
+			return HBFunctions.hb_audio_can_apply_drc(track.CodecId, track.CodecParam, encoder.Id) > 0;
 		}
 
 		/// <summary>

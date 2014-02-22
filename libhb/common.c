@@ -1,6 +1,6 @@
 /* common.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -21,6 +21,10 @@
 #include "qsv_common.h"
 #endif
 
+#ifdef USE_X265
+#include "x265.h"
+#endif
+
 #ifdef SYS_MINGW
 #include <windows.h>
 #endif
@@ -35,6 +39,7 @@ enum
 {
     HB_GID_NONE = -1, // encoders must NEVER use it
     HB_GID_VCODEC_H264,
+    HB_GID_VCODEC_H265,
     HB_GID_VCODEC_MPEG2,
     HB_GID_VCODEC_MPEG4,
     HB_GID_VCODEC_THEORA,
@@ -52,6 +57,7 @@ enum
     HB_GID_ACODEC_VORBIS,
     HB_GID_MUX_MKV,
     HB_GID_MUX_MP4,
+    HB_GID_MUX_265,
 };
 
 typedef struct
@@ -194,10 +200,10 @@ hb_encoder_t *hb_video_encoders_last_item  = NULL;
 hb_encoder_internal_t hb_video_encoders[]  =
 {
     // legacy encoders, back to HB 0.9.4 whenever possible (disabled)
-    { { "FFmpeg",            "ffmpeg",    HB_VCODEC_FFMPEG_MPEG4, HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_VCODEC_MPEG4,  },
-    { { "MPEG-4 (FFmpeg)",   "ffmpeg4",   HB_VCODEC_FFMPEG_MPEG4, HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_VCODEC_MPEG4,  },
-    { { "MPEG-2 (FFmpeg)",   "ffmpeg2",   HB_VCODEC_FFMPEG_MPEG2, HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_VCODEC_MPEG2,  },
-    { { "VP3 (Theora)",      "libtheora", HB_VCODEC_THEORA,                       HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_VCODEC_THEORA, },
+    { { "FFmpeg",            "ffmpeg",    NULL,                      HB_VCODEC_FFMPEG_MPEG4, HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_VCODEC_MPEG4,  },
+    { { "MPEG-4 (FFmpeg)",   "ffmpeg4",   NULL,                      HB_VCODEC_FFMPEG_MPEG4, HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_VCODEC_MPEG4,  },
+    { { "MPEG-2 (FFmpeg)",   "ffmpeg2",   NULL,                      HB_VCODEC_FFMPEG_MPEG2, HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_VCODEC_MPEG2,  },
+    { { "VP3 (Theora)",      "libtheora", NULL,                      HB_VCODEC_THEORA,                       HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_VCODEC_THEORA, },
     // actual encoders
     { { "H.264 (x264)",      "x264",      HB_VCODEC_X264,         HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_VCODEC_H264,   },
     { { "H.264 (Intel QSV)", "qsv_h264",  HB_VCODEC_QSV_H264,     HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_VCODEC_H264,   },
@@ -209,19 +215,23 @@ hb_encoder_internal_t hb_video_encoders[]  =
 int hb_video_encoders_count = sizeof(hb_video_encoders) / sizeof(hb_video_encoders[0]);
 static int hb_video_encoder_is_enabled(int encoder)
 {
+#ifdef USE_QSV
+    if (encoder & HB_VCODEC_QSV_MASK)
+    {
+        return hb_qsv_video_encoder_is_enabled(encoder);
+    }
+#endif
     switch (encoder)
     {
-#ifdef USE_QSV
-        case HB_VCODEC_QSV_H264:
-            return hb_qsv_available();
-#endif
-
         // the following encoders are always enabled
         case HB_VCODEC_X264:
         case HB_VCODEC_VT_H264:
         case HB_VCODEC_THEORA:
         case HB_VCODEC_FFMPEG_MPEG4:
         case HB_VCODEC_FFMPEG_MPEG2:
+#ifdef USE_X265
+        case HB_VCODEC_X265:
+#endif
             return 1;
 
         default:
@@ -234,31 +244,31 @@ hb_encoder_t *hb_audio_encoders_last_item  = NULL;
 hb_encoder_internal_t hb_audio_encoders[]  =
 {
     // legacy encoders, back to HB 0.9.4 whenever possible (disabled)
-    { { "",                   "dts",        HB_ACODEC_DCA_PASS,     HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_DTS_PASS,   },
-    { { "AAC (ffmpeg)",       "ffaac",      HB_ACODEC_FFAAC,        HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_AAC,        },
-    { { "AC3 (ffmpeg)",       "ffac3",      HB_ACODEC_AC3,          HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_AC3,        },
-    { { "MP3 (lame)",         "lame",       HB_ACODEC_LAME,         HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_MP3,        },
-    { { "Vorbis (vorbis)",    "libvorbis",  HB_ACODEC_VORBIS,                       HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_VORBIS,     },
-    { { "FLAC (ffmpeg)",      "ffflac",     HB_ACODEC_FFFLAC,                       HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_FLAC,       },
-    { { "FLAC (24-bit)",      "ffflac24",   HB_ACODEC_FFFLAC24,                     HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_FLAC,       },
+    { { "",                   "dts",        NULL,                          HB_ACODEC_DCA_PASS,    HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_DTS_PASS,   },
+    { { "AAC (ffmpeg)",       "ffaac",      NULL,                          HB_ACODEC_FFAAC,       HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_AAC,        },
+    { { "AC3 (ffmpeg)",       "ffac3",      NULL,                          HB_ACODEC_AC3,         HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_AC3,        },
+    { { "MP3 (lame)",         "lame",       NULL,                          HB_ACODEC_LAME,        HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_MP3,        },
+    { { "Vorbis (vorbis)",    "libvorbis",  NULL,                          HB_ACODEC_VORBIS,                      HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_VORBIS,     },
+    { { "FLAC (ffmpeg)",      "ffflac",     NULL,                          HB_ACODEC_FFFLAC,                      HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_FLAC,       },
+    { { "FLAC (24-bit)",      "ffflac24",   NULL,                          HB_ACODEC_FFFLAC24,                    HB_MUX_MASK_MKV, }, NULL, 0, HB_GID_ACODEC_FLAC,       },
     // actual encoders
-    { { "AAC (CoreAudio)",    "ca_aac",     HB_ACODEC_CA_AAC,       HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC,        },
-    { { "HE-AAC (CoreAudio)", "ca_haac",    HB_ACODEC_CA_HAAC,      HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC_HE,     },
-    { { "AAC (faac)",         "faac",       HB_ACODEC_FAAC,         HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC,        },
-    { { "AAC (avcodec)",      "av_aac",     HB_ACODEC_FFAAC,        HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC,        },
-    { { "AAC (FDK)",          "fdk_aac",    HB_ACODEC_FDK_AAC,      HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC,        },
-    { { "HE-AAC (FDK)",       "fdk_haac",   HB_ACODEC_FDK_HAAC,     HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC_HE,     },
-    { { "AAC Passthru",       "copy:aac",   HB_ACODEC_AAC_PASS,     HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC_PASS,   },
-    { { "AC3",                "ac3",        HB_ACODEC_AC3,          HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AC3,        },
-    { { "AC3 Passthru",       "copy:ac3",   HB_ACODEC_AC3_PASS,     HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AC3_PASS,   },
-    { { "DTS Passthru",       "copy:dts",   HB_ACODEC_DCA_PASS,     HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_DTS_PASS,   },
-    { { "DTS-HD Passthru",    "copy:dtshd", HB_ACODEC_DCA_HD_PASS,  HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_DTSHD_PASS, },
-    { { "MP3",                "mp3",        HB_ACODEC_LAME,         HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_MP3,        },
-    { { "MP3 Passthru",       "copy:mp3",   HB_ACODEC_MP3_PASS,     HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_MP3_PASS,   },
-    { { "Vorbis",             "vorbis",     HB_ACODEC_VORBIS,                       HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_VORBIS,     },
-    { { "FLAC 16-bit",        "flac16",     HB_ACODEC_FFFLAC,                       HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_FLAC,       },
-    { { "FLAC 24-bit",        "flac24",     HB_ACODEC_FFFLAC24,                     HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_FLAC,       },
-    { { "Auto Passthru",      "copy",       HB_ACODEC_AUTO_PASS,    HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AUTO_PASS,  },
+    { { "AAC (CoreAudio)",    "ca_aac",     "AAC (Apple AudioToolbox)",    HB_ACODEC_CA_AAC,      HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC,        },
+    { { "HE-AAC (CoreAudio)", "ca_haac",    "HE-AAC (Apple AudioToolbox)", HB_ACODEC_CA_HAAC,     HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC_HE,     },
+    { { "AAC (faac)",         "faac",       "AAC (libfaac)",               HB_ACODEC_FAAC,        HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC,        },
+    { { "AAC (avcodec)",      "av_aac",     "AAC (libavcodec)",            HB_ACODEC_FFAAC,       HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC,        },
+    { { "AAC (FDK)",          "fdk_aac",    "AAC (libfdk_aac)",            HB_ACODEC_FDK_AAC,     HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC,        },
+    { { "HE-AAC (FDK)",       "fdk_haac",   "HE-AAC (libfdk_aac)",         HB_ACODEC_FDK_HAAC,    HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC_HE,     },
+    { { "AAC Passthru",       "copy:aac",   "AAC Passthru",                HB_ACODEC_AAC_PASS,    HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AAC_PASS,   },
+    { { "AC3",                "ac3",        "AC3 (libavcodec)",            HB_ACODEC_AC3,         HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AC3,        },
+    { { "AC3 Passthru",       "copy:ac3",   "AC3 Passthru",                HB_ACODEC_AC3_PASS,    HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AC3_PASS,   },
+    { { "DTS Passthru",       "copy:dts",   "DTS Passthru",                HB_ACODEC_DCA_PASS,    HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_DTS_PASS,   },
+    { { "DTS-HD Passthru",    "copy:dtshd", "DTS-HD Passthru",             HB_ACODEC_DCA_HD_PASS, HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_DTSHD_PASS, },
+    { { "MP3",                "mp3",        "MP3 (libmp3lame)",            HB_ACODEC_LAME,        HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_MP3,        },
+    { { "MP3 Passthru",       "copy:mp3",   "MP3 Passthru",                HB_ACODEC_MP3_PASS,    HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_MP3_PASS,   },
+    { { "Vorbis",             "vorbis",     "Vorbis (libvorbis)",          HB_ACODEC_VORBIS,                      HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_VORBIS,     },
+    { { "FLAC 16-bit",        "flac16",     "FLAC 16-bit (libavcodec)",    HB_ACODEC_FFFLAC,                      HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_FLAC,       },
+    { { "FLAC 24-bit",        "flac24",     "FLAC 24-bit (libavcodec)",    HB_ACODEC_FFFLAC24,                    HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_FLAC,       },
+    { { "Auto Passthru",      "copy",       "Auto Passthru",               HB_ACODEC_AUTO_PASS,   HB_MUX_MASK_MP4|HB_MUX_MASK_MKV, }, NULL, 1, HB_GID_ACODEC_AUTO_PASS,  },
 };
 int hb_audio_encoders_count = sizeof(hb_audio_encoders) / sizeof(hb_audio_encoders[0]);
 static int hb_audio_encoder_is_enabled(int encoder)
@@ -317,14 +327,15 @@ hb_container_t *hb_containers_last_item  = NULL;
 hb_container_internal_t hb_containers[]  =
 {
     // legacy muxers, back to HB 0.9.4 whenever possible (disabled)
-    { { "M4V file",            "m4v",    "m4v",             0, }, NULL, 0, HB_GID_MUX_MP4, },
-    { { "MP4 file",            "mp4",    "mp4",             0, }, NULL, 0, HB_GID_MUX_MP4, },
-    { { "MKV file",            "mkv",    "mkv",             0, }, NULL, 0, HB_GID_MUX_MKV, },
+    { { "M4V file",            "m4v",    NULL,                     "m4v",  0,             }, NULL, 0, HB_GID_MUX_MP4, },
+    { { "MP4 file",            "mp4",    NULL,                     "mp4",  0,             }, NULL, 0, HB_GID_MUX_MP4, },
+    { { "MKV file",            "mkv",    NULL,                     "mkv",  0,             }, NULL, 0, HB_GID_MUX_MKV, },
     // actual muxers
-    { { "MPEG-4 (avformat)",   "av_mp4", "mp4", HB_MUX_AV_MP4, }, NULL, 1, HB_GID_MUX_MP4, },
-    { { "MPEG-4 (mp4v2)",      "mp4v2",  "mp4", HB_MUX_MP4V2,  }, NULL, 1, HB_GID_MUX_MP4, },
-    { { "Matroska (avformat)", "av_mkv", "mkv", HB_MUX_AV_MKV, }, NULL, 1, HB_GID_MUX_MKV, },
-    { { "Matroska (libmkv)",   "libmkv", "mkv", HB_MUX_LIBMKV, }, NULL, 1, HB_GID_MUX_MKV, },
+    { { "MPEG-4 (avformat)",   "av_mp4", "MPEG-4 (libavformat)",   "mp4",  HB_MUX_AV_MP4, }, NULL, 1, HB_GID_MUX_MP4, },
+    { { "MPEG-4 (mp4v2)",      "mp4v2",  "MPEG-4 (libmp4v2)",      "mp4",  HB_MUX_MP4V2,  }, NULL, 1, HB_GID_MUX_MP4, },
+    { { "Matroska (avformat)", "av_mkv", "Matroska (libavformat)", "mkv",  HB_MUX_AV_MKV, }, NULL, 1, HB_GID_MUX_MKV, },
+    { { "Matroska (libmkv)",   "libmkv", "Matroska (libmkv)",      "mkv",  HB_MUX_LIBMKV, }, NULL, 1, HB_GID_MUX_MKV, },
+    { { "Raw H.265 (x265)",    "x265",   "H.265 (raw stream)",     "265",  HB_MUX_X265,   }, NULL, 1, HB_GID_MUX_265, },
 };
 int hb_containers_count = sizeof(hb_containers) / sizeof(hb_containers[0]);
 static int hb_container_is_enabled(int format)
@@ -340,6 +351,9 @@ static int hb_container_is_enabled(int format)
 #ifdef USE_AVFORMAT
         case HB_MUX_AV_MP4:
         case HB_MUX_AV_MKV:
+#endif
+#ifdef USE_X265
+        case HB_MUX_X265:
 #endif
             return 1;
 
@@ -1107,9 +1121,20 @@ const hb_rate_t* hb_audio_bitrate_get_next(const hb_rate_t *last)
 void hb_video_quality_get_limits(uint32_t codec, float *low, float *high,
                                  float *granularity, int *direction)
 {
+#ifdef USE_QSV
+    if (codec & HB_VCODEC_QSV_MASK)
+    {
+        return hb_qsv_video_quality_get_limits(codec, low, high, granularity,
+                                               direction);
+    }
+#endif
+
     switch (codec)
     {
         case HB_VCODEC_X264:
+#ifdef USE_X265
+        case HB_VCODEC_X265:
+#endif
             *direction   = 1;
             *granularity = 0.1;
             *low         = 0.;
@@ -1143,9 +1168,19 @@ void hb_video_quality_get_limits(uint32_t codec, float *low, float *high,
 
 const char* hb_video_quality_get_name(uint32_t codec)
 {
+#ifdef USE_QSV
+    if (codec & HB_VCODEC_QSV_MASK)
+    {
+        return hb_qsv_video_quality_get_name(codec);
+    }
+#endif
+
     switch (codec)
     {
         case HB_VCODEC_X264:
+#ifdef USE_X265
+        case HB_VCODEC_X265:
+#endif
             return "RF";
             
         case HB_VCODEC_VT_H264:
@@ -1158,16 +1193,22 @@ const char* hb_video_quality_get_name(uint32_t codec)
 
 const char* const* hb_video_encoder_get_presets(int encoder)
 {
+#ifdef USE_QSV
+    if (encoder & HB_VCODEC_QSV_MASK)
+    {
+        return hb_qsv_preset_get_names();
+    }
+#endif
+
     switch (encoder)
     {
         case HB_VCODEC_X264:
             return x264_preset_names;
 
-#ifdef USE_QSV
-        case HB_VCODEC_QSV_H264:
-            return hb_qsv_preset_get_names();
+#ifdef USE_X265
+        case HB_VCODEC_X265:
+            return x265_preset_names;
 #endif
-
         default:
             return NULL;
     }
@@ -1180,6 +1221,10 @@ const char* const* hb_video_encoder_get_tunes(int encoder)
         case HB_VCODEC_X264:
             return x264_tune_names;
 
+#ifdef USE_X265
+        case HB_VCODEC_X265:
+            return x265_tune_names;
+#endif
         default:
             return NULL;
     }
@@ -1187,12 +1232,22 @@ const char* const* hb_video_encoder_get_tunes(int encoder)
 
 const char* const* hb_video_encoder_get_profiles(int encoder)
 {
+#ifdef USE_QSV
+    if (encoder & HB_VCODEC_QSV_MASK)
+    {
+        return hb_qsv_profile_get_names(encoder);
+    }
+#endif
+
     switch (encoder)
     {
         case HB_VCODEC_X264:
-        case HB_VCODEC_QSV_H264:
             return hb_h264_profile_names;
 
+#ifdef USE_X265
+        case HB_VCODEC_X265:
+            return x265_profile_names;
+#endif
         default:
             return NULL;
     }
@@ -1200,10 +1255,16 @@ const char* const* hb_video_encoder_get_profiles(int encoder)
 
 const char* const* hb_video_encoder_get_levels(int encoder)
 {
+#ifdef USE_QSV
+    if (encoder & HB_VCODEC_QSV_MASK)
+    {
+        return hb_qsv_level_get_names(encoder);
+    }
+#endif
+
     switch (encoder)
     {
         case HB_VCODEC_X264:
-        case HB_VCODEC_QSV_H264:
             return hb_h264_level_names;
 
         default:
@@ -1750,6 +1811,24 @@ fail:
     return NULL;
 }
 
+const char* hb_video_encoder_get_long_name(int encoder)
+{
+    if (!(encoder & HB_VCODEC_MASK))
+        goto fail;
+
+    const hb_encoder_t *video_encoder = NULL;
+    while ((video_encoder = hb_video_encoder_get_next(video_encoder)) != NULL)
+    {
+        if (video_encoder->codec == encoder)
+        {
+            return video_encoder->long_name;
+        }
+    }
+
+fail:
+    return NULL;
+}
+
 const char* hb_video_encoder_sanitize_name(const char *name)
 {
     return hb_video_encoder_get_name(hb_video_encoder_get_from_name(name));
@@ -1886,6 +1965,24 @@ const char* hb_audio_encoder_get_short_name(int encoder)
         if (audio_encoder->codec == encoder)
         {
             return audio_encoder->short_name;
+        }
+    }
+
+fail:
+    return NULL;
+}
+
+const char* hb_audio_encoder_get_long_name(int encoder)
+{
+    if (!(encoder & HB_ACODEC_ANY))
+        goto fail;
+
+    const hb_encoder_t *audio_encoder = NULL;
+    while ((audio_encoder = hb_audio_encoder_get_next(audio_encoder)) != NULL)
+    {
+        if (audio_encoder->codec == encoder)
+        {
+            return audio_encoder->long_name;
         }
     }
 
@@ -2118,6 +2215,24 @@ const char* hb_container_get_short_name(int format)
         if (container->format == format)
         {
             return container->short_name;
+        }
+    }
+
+fail:
+    return NULL;
+}
+
+const char* hb_container_get_long_name(int format)
+{
+    if (!(format & HB_MUX_MASK))
+        goto fail;
+
+    const hb_container_t *container = NULL;
+    while ((container = hb_container_get_next(container)) != NULL)
+    {
+        if (container->format == format)
+        {
+            return container->long_name;
         }
     }
 
@@ -2820,7 +2935,8 @@ hb_title_t * hb_title_init( char * path, int index )
     strcat( t->path, path );
     // default to decoding mpeg2
     t->video_id      = 0xE0;
-    t->video_codec   = WORK_DECMPEG2;
+    t->video_codec   = WORK_DECAVCODECV;
+    t->video_codec_param = AV_CODEC_ID_MPEG2VIDEO;
     t->angle_count   = 1;
     t->pixel_aspect_width = 1;
     t->pixel_aspect_height = 1;
@@ -2975,7 +3091,6 @@ static void job_setup( hb_job_t * job, hb_title_t * title )
 
 #ifdef USE_QSV
     job->qsv.enc_info.is_init_done = 0;
-    job->qsv.preset                = NULL;
     job->qsv.async_depth           = AV_QSV_ASYNC_DEPTH_DEFAULT;
     job->qsv.decode                = !!(title->video_decode_support &
                                         HB_DECODE_SUPPORT_QSV);
@@ -2992,18 +3107,18 @@ static void job_clean( hb_job_t * job )
         hb_filter_object_t *filter;
         hb_attachment_t *attachment;
 
+        free(job->encoder_preset);
+        job->encoder_preset = NULL;
+        free(job->encoder_tune);
+        job->encoder_tune = NULL;
+        free(job->encoder_options);
+        job->encoder_options = NULL;
+        free(job->encoder_profile);
+        job->encoder_profile = NULL;
+        free(job->encoder_level);
+        job->encoder_level = NULL;
         free(job->file);
         job->file = NULL;
-        free(job->advanced_opts);
-        job->advanced_opts = NULL;
-        free(job->x264_preset);
-        job->x264_preset = NULL;
-        free(job->x264_tune);
-        job->x264_tune = NULL;
-        free(job->h264_profile);
-        job->h264_profile = NULL;
-        free(job->h264_level);
-        job->h264_level = NULL;
 
         // clean up chapter list
         while( ( chapter = hb_list_item( job->list_chapter, 0 ) ) )
@@ -3109,51 +3224,51 @@ void hb_job_close( hb_job_t ** _j )
     }
 }
 
-void hb_job_set_file( hb_job_t *job, const char *file )
+void hb_job_set_encoder_preset(hb_job_t *job, const char *preset)
 {
-    if ( job )
+    if (job != NULL)
     {
-        hb_update_str( &job->file, file );
+        hb_update_str(&job->encoder_preset, preset);
     }
 }
 
-void hb_job_set_advanced_opts( hb_job_t *job, const char *advanced_opts )
+void hb_job_set_encoder_tune(hb_job_t *job, const char *tune)
 {
-    if ( job )
+    if (job != NULL)
     {
-        hb_update_str( &job->advanced_opts, advanced_opts );
+        hb_update_str(&job->encoder_tune, tune);
     }
 }
 
-void hb_job_set_x264_preset( hb_job_t *job, const char *preset )
+void hb_job_set_encoder_options(hb_job_t *job, const char *options)
 {
-    if ( job )
+    if (job != NULL)
     {
-        hb_update_str( &job->x264_preset, preset );
+        hb_update_str(&job->encoder_options, options);
     }
 }
 
-void hb_job_set_x264_tune( hb_job_t *job, const char *tune )
+void hb_job_set_encoder_profile(hb_job_t *job, const char *profile)
 {
-    if ( job )
+    if (job != NULL)
     {
-        hb_update_str( &job->x264_tune, tune );
+        hb_update_str(&job->encoder_profile, profile);
     }
 }
 
-void hb_job_set_h264_profile( hb_job_t *job, const char *profile )
+void hb_job_set_encoder_level(hb_job_t *job, const char *level)
 {
-    if ( job )
+    if (job != NULL)
     {
-        hb_update_str( &job->h264_profile, profile );
+        hb_update_str(&job->encoder_level, level);
     }
 }
 
-void hb_job_set_h264_level( hb_job_t *job, const char *level )
+void hb_job_set_file(hb_job_t *job, const char *file)
 {
-    if ( job )
+    if (job != NULL)
     {
-        hb_update_str( &job->h264_level, level );
+        hb_update_str(&job->file, file);
     }
 }
 
@@ -3442,7 +3557,8 @@ void hb_audio_config_init(hb_audio_config_t * audiocfg)
     audiocfg->in.samplerate = -1;
     audiocfg->in.samples_per_frame = -1;
     audiocfg->in.bitrate = -1;
-    audiocfg->in.channel_layout = -1;
+    audiocfg->in.matrix_encoding = AV_MATRIX_ENCODING_NONE;
+    audiocfg->in.channel_layout = 0;
     audiocfg->in.channel_map = NULL;
     audiocfg->lang.description[0] = 0;
     audiocfg->lang.simple[0] = 0;
@@ -3717,6 +3833,28 @@ int hb_subtitle_can_pass( int source, int mux )
             // Internal error. Should never get here.
             hb_error("internel error.  Bad mux %d\n", mux);
             return 0;
+    }
+}
+
+int hb_audio_can_apply_drc(uint32_t codec, uint32_t codec_param, int encoder)
+{
+    if (encoder & HB_ACODEC_PASS_FLAG)
+    {
+        // can't apply DRC to passthrough audio
+        return 0;
+    }
+    else if (codec & HB_ACODEC_FF_MASK)
+    {
+        return (codec_param == AV_CODEC_ID_AC3 ||
+                codec_param == AV_CODEC_ID_EAC3);
+    }
+    else if (codec == HB_ACODEC_AC3)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
     }
 }
 

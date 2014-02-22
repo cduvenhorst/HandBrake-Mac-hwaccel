@@ -10,11 +10,9 @@
 		A9DB39100D37EA0300F77345 /* common.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB38E70D37EA0300F77345 /* common.c */; };
 		A9DB39110D37EA0300F77345 /* common.h in Headers */ = {isa = PBXBuildFile; fileRef = A9DB38E80D37EA0300F77345 /* common.h */; };
 		A9DB39120D37EA0300F77345 /* deblock.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB38E90D37EA0300F77345 /* deblock.c */; };
-		A9DB39130D37EA0300F77345 /* deca52.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB38EA0D37EA0300F77345 /* deca52.c */; };
 		A9DB39140D37EA0300F77345 /* decavcodec.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB38EB0D37EA0300F77345 /* decavcodec.c */; };
 		A9DB39150D37EA0300F77345 /* decdca.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB38EC0D37EA0300F77345 /* decdca.c */; };
 		A9DB39160D37EA0300F77345 /* declpcm.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB38ED0D37EA0300F77345 /* declpcm.c */; };
-		A9DB39170D37EA0300F77345 /* decmpeg2.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB38EE0D37EA0300F77345 /* decmpeg2.c */; };
 		A9DB39180D37EA0300F77345 /* decsub.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB38EF0D37EA0300F77345 /* decsub.c */; };
 		A9DB39190D37EA0300F77345 /* deinterlace.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB38F00D37EA0300F77345 /* deinterlace.c */; };
 		A9DB391A0D37EA0300F77345 /* demuxmpeg.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB38F10D37EA0300F77345 /* demuxmpeg.c */; };
@@ -48,7 +46,6 @@
 		A9DB39360D37EA0300F77345 /* sync.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB390D0D37EA0300F77345 /* sync.c */; };
 		A9DB39370D37EA0300F77345 /* update.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB390E0D37EA0300F77345 /* update.c */; };
 		A9DB39380D37EA0300F77345 /* work.c in Sources */ = {isa = PBXBuildFile; fileRef = A9DB390F0D37EA0300F77345 /* work.c */; };
-		A9DB39B20D37EB4700F77345 /* liba52.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9DB399D0D37EB4700F77345 /* liba52.a */; };
 		A9DB39B30D37EB4700F77345 /* libavcodec.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9DB399E0D37EB4700F77345 /* libavcodec.a */; };
 		A9DB39B40D37EB4700F77345 /* libavformat.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9DB399F0D37EB4700F77345 /* libavformat.a */; };
 		A9DB39B50D37EB4700F77345 /* libavutil.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9DB39A00D37EB4700F77345 /* libavutil.a */; };
@@ -59,7 +56,6 @@
 		A9DB39BA0D37EB4700F77345 /* libmkv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9DB39A50D37EB4700F77345 /* libmkv.a */; };
 		A9DB39BB0D37EB4700F77345 /* libmp3lame.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9DB39A60D37EB4700F77345 /* libmp3lame.a */; };
 		A9DB39BC0D37EB4700F77345 /* libmp4v2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9DB39A70D37EB4700F77345 /* libmp4v2.a */; };
-		A9DB39BD0D37EB4700F77345 /* libmpeg2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9DB39A80D37EB4700F77345 /* libmpeg2.a */; };
 		A9DB39BE0D37EB4700F77345 /* libmpeg2convert.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9DB39A90D37EB4700F77345 /* libmpeg2convert.a */; };
 		A9DB39BF0D37EB4700F77345 /* libogg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9DB39AA0D37EB4700F77345 /* libogg.a */; };
 		A9DB39C00D37EB4700F77345 /* libsamplerate.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9DB39AB0D37EB4700F77345 /* libsamplerate.a */; };
@@ -72,7 +68,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0DFF0B720B6BC6E600549488 /* libhb.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libhb.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		0DFF0B720B6BC6E600549488 /* libhandbrake.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libhandbrake.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = /System/Library/Frameworks/Cocoa.framework; sourceTree = "<absolute>"; };
 		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
@@ -81,11 +77,9 @@
 		A9DB38E70D37EA0300F77345 /* common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = common.c; path = ../../libhb/common.c; sourceTree = SOURCE_ROOT; };
 		A9DB38E80D37EA0300F77345 /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = common.h; path = ../../libhb/common.h; sourceTree = SOURCE_ROOT; };
 		A9DB38E90D37EA0300F77345 /* deblock.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = deblock.c; path = ../../libhb/deblock.c; sourceTree = SOURCE_ROOT; };
-		A9DB38EA0D37EA0300F77345 /* deca52.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = deca52.c; path = ../../libhb/deca52.c; sourceTree = SOURCE_ROOT; };
 		A9DB38EB0D37EA0300F77345 /* decavcodec.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = decavcodec.c; path = ../../libhb/decavcodec.c; sourceTree = SOURCE_ROOT; };
 		A9DB38EC0D37EA0300F77345 /* decdca.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = decdca.c; path = ../../libhb/decdca.c; sourceTree = SOURCE_ROOT; };
 		A9DB38ED0D37EA0300F77345 /* declpcm.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = declpcm.c; path = ../../libhb/declpcm.c; sourceTree = SOURCE_ROOT; };
-		A9DB38EE0D37EA0300F77345 /* decmpeg2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = decmpeg2.c; path = ../../libhb/decmpeg2.c; sourceTree = SOURCE_ROOT; };
 		A9DB38EF0D37EA0300F77345 /* decsub.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = decsub.c; path = ../../libhb/decsub.c; sourceTree = SOURCE_ROOT; };
 		A9DB38F00D37EA0300F77345 /* deinterlace.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = deinterlace.c; path = ../../libhb/deinterlace.c; sourceTree = SOURCE_ROOT; };
 		A9DB38F10D37EA0300F77345 /* demuxmpeg.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = demuxmpeg.c; path = ../../libhb/demuxmpeg.c; sourceTree = SOURCE_ROOT; };
@@ -119,7 +113,6 @@
 		A9DB390D0D37EA0300F77345 /* sync.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = sync.c; path = ../../libhb/sync.c; sourceTree = SOURCE_ROOT; };
 		A9DB390E0D37EA0300F77345 /* update.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = update.c; path = ../../libhb/update.c; sourceTree = SOURCE_ROOT; };
 		A9DB390F0D37EA0300F77345 /* work.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = work.c; path = ../../libhb/work.c; sourceTree = SOURCE_ROOT; };
-		A9DB399D0D37EB4700F77345 /* liba52.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liba52.a; path = ../../contrib/lib/liba52.a; sourceTree = SOURCE_ROOT; };
 		A9DB399E0D37EB4700F77345 /* libavcodec.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libavcodec.a; path = ../../contrib/lib/libavcodec.a; sourceTree = SOURCE_ROOT; };
 		A9DB399F0D37EB4700F77345 /* libavformat.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libavformat.a; path = ../../contrib/lib/libavformat.a; sourceTree = SOURCE_ROOT; };
 		A9DB39A00D37EB4700F77345 /* libavutil.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libavutil.a; path = ../../contrib/lib/libavutil.a; sourceTree = SOURCE_ROOT; };
@@ -130,7 +123,6 @@
 		A9DB39A50D37EB4700F77345 /* libmkv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libmkv.a; path = ../../contrib/lib/libmkv.a; sourceTree = SOURCE_ROOT; };
 		A9DB39A60D37EB4700F77345 /* libmp3lame.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libmp3lame.a; path = ../../contrib/lib/libmp3lame.a; sourceTree = SOURCE_ROOT; };
 		A9DB39A70D37EB4700F77345 /* libmp4v2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libmp4v2.a; path = ../../contrib/lib/libmp4v2.a; sourceTree = SOURCE_ROOT; };
-		A9DB39A80D37EB4700F77345 /* libmpeg2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libmpeg2.a; path = ../../contrib/lib/libmpeg2.a; sourceTree = SOURCE_ROOT; };
 		A9DB39A90D37EB4700F77345 /* libmpeg2convert.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libmpeg2convert.a; path = ../../contrib/lib/libmpeg2convert.a; sourceTree = SOURCE_ROOT; };
 		A9DB39AA0D37EB4700F77345 /* libogg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libogg.a; path = ../../contrib/lib/libogg.a; sourceTree = SOURCE_ROOT; };
 		A9DB39AB0D37EB4700F77345 /* libsamplerate.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libsamplerate.a; path = ../../contrib/lib/libsamplerate.a; sourceTree = SOURCE_ROOT; };
@@ -147,7 +139,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A9DB39B20D37EB4700F77345 /* liba52.a in Frameworks */,
 				A9DB39B30D37EB4700F77345 /* libavcodec.a in Frameworks */,
 				A9DB39B40D37EB4700F77345 /* libavformat.a in Frameworks */,
 				A9DB39B50D37EB4700F77345 /* libavutil.a in Frameworks */,
@@ -158,7 +149,6 @@
 				A9DB39BA0D37EB4700F77345 /* libmkv.a in Frameworks */,
 				A9DB39BB0D37EB4700F77345 /* libmp3lame.a in Frameworks */,
 				A9DB39BC0D37EB4700F77345 /* libmp4v2.a in Frameworks */,
-				A9DB39BD0D37EB4700F77345 /* libmpeg2.a in Frameworks */,
 				A9DB39BE0D37EB4700F77345 /* libmpeg2convert.a in Frameworks */,
 				A9DB39BF0D37EB4700F77345 /* libogg.a in Frameworks */,
 				A9DB39C00D37EB4700F77345 /* libsamplerate.a in Frameworks */,
@@ -177,7 +167,7 @@
 		19C28FACFE9D520D11CA2CBB /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				0DFF0B720B6BC6E600549488 /* libhb.a */,
+				0DFF0B720B6BC6E600549488 /* libhandbrake.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -188,11 +178,9 @@
 				A9DB38E70D37EA0300F77345 /* common.c */,
 				A9DB38E80D37EA0300F77345 /* common.h */,
 				A9DB38E90D37EA0300F77345 /* deblock.c */,
-				A9DB38EA0D37EA0300F77345 /* deca52.c */,
 				A9DB38EB0D37EA0300F77345 /* decavcodec.c */,
 				A9DB38EC0D37EA0300F77345 /* decdca.c */,
 				A9DB38ED0D37EA0300F77345 /* declpcm.c */,
-				A9DB38EE0D37EA0300F77345 /* decmpeg2.c */,
 				A9DB38EF0D37EA0300F77345 /* decsub.c */,
 				A9DB38F00D37EA0300F77345 /* deinterlace.c */,
 				A9DB38F10D37EA0300F77345 /* demuxmpeg.c */,
@@ -235,7 +223,6 @@
 		29B97323FDCFA39411CA2CEA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				A9DB399D0D37EB4700F77345 /* liba52.a */,
 				A9DB399E0D37EB4700F77345 /* libavcodec.a */,
 				A9DB399F0D37EB4700F77345 /* libavformat.a */,
 				A9DB39A00D37EB4700F77345 /* libavutil.a */,
@@ -246,7 +233,6 @@
 				A9DB39A50D37EB4700F77345 /* libmkv.a */,
 				A9DB39A60D37EB4700F77345 /* libmp3lame.a */,
 				A9DB39A70D37EB4700F77345 /* libmp4v2.a */,
-				A9DB39A80D37EB4700F77345 /* libmpeg2.a */,
 				A9DB39A90D37EB4700F77345 /* libmpeg2convert.a */,
 				A9DB39AA0D37EB4700F77345 /* libogg.a */,
 				A9DB39AB0D37EB4700F77345 /* libsamplerate.a */,
@@ -283,9 +269,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		0DFF0B710B6BC6E600549488 /* libhb */ = {
+		0DFF0B710B6BC6E600549488 /* libhandbrake */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 0DFF0B730B6BC70400549488 /* Build configuration list for PBXNativeTarget "libhb" */;
+			buildConfigurationList = 0DFF0B730B6BC70400549488 /* Build configuration list for PBXNativeTarget "libhandbrake" */;
 			buildPhases = (
 				0DFF0B6E0B6BC6E600549488 /* Headers */,
 				0DFF0B6F0B6BC6E600549488 /* Sources */,
@@ -295,9 +281,9 @@
 			);
 			dependencies = (
 			);
-			name = libhb;
+			name = libhandbrake;
 			productName = libmediafork;
-			productReference = 0DFF0B720B6BC6E600549488 /* libhb.a */;
+			productReference = 0DFF0B720B6BC6E600549488 /* libhandbrake.a */;
 			productType = "com.apple.product-type.library.static";
 		};
 /* End PBXNativeTarget section */
@@ -305,14 +291,14 @@
 /* Begin PBXProject section */
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
-			buildConfigurationList = 4D4E7BC4087804870051572B /* Build configuration list for PBXProject "libhb" */;
+			buildConfigurationList = 4D4E7BC4087804870051572B /* Build configuration list for PBXProject "libhandbrake" */;
 			compatibilityVersion = "Xcode 2.4";
 			hasScannedForEncodings = 1;
 			mainGroup = 29B97314FDCFA39411CA2CEA /* HandBrake */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				0DFF0B710B6BC6E600549488 /* libhb */,
+				0DFF0B710B6BC6E600549488 /* libhandbrake */,
 			);
 		};
 /* End PBXProject section */
@@ -324,11 +310,9 @@
 			files = (
 				A9DB39100D37EA0300F77345 /* common.c in Sources */,
 				A9DB39120D37EA0300F77345 /* deblock.c in Sources */,
-				A9DB39130D37EA0300F77345 /* deca52.c in Sources */,
 				A9DB39140D37EA0300F77345 /* decavcodec.c in Sources */,
 				A9DB39150D37EA0300F77345 /* decdca.c in Sources */,
 				A9DB39160D37EA0300F77345 /* declpcm.c in Sources */,
-				A9DB39170D37EA0300F77345 /* decmpeg2.c in Sources */,
 				A9DB39180D37EA0300F77345 /* decsub.c in Sources */,
 				A9DB39190D37EA0300F77345 /* deinterlace.c in Sources */,
 				A9DB391A0D37EA0300F77345 /* demuxmpeg.c in Sources */,
@@ -519,7 +503,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0DFF0B730B6BC70400549488 /* Build configuration list for PBXNativeTarget "libhb" */ = {
+		0DFF0B730B6BC70400549488 /* Build configuration list for PBXNativeTarget "libhandbrake" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0DFF0B740B6BC70400549488 /* Development */,
@@ -529,7 +513,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Deployment;
 		};
-		4D4E7BC4087804870051572B /* Build configuration list for PBXProject "libhb" */ = {
+		4D4E7BC4087804870051572B /* Build configuration list for PBXProject "libhandbrake" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4D4E7BC5087804870051572B /* Development */,

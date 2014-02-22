@@ -2,14 +2,14 @@
 /*
  * settings.c
  * Copyright (C) John Stebbins 2008-2013 <stebbins@stebbins>
- * 
+ *
  * settings.c is free software.
- * 
+ *
  * You may redistribute it and/or modify it under the terms of the
  * GNU General Public License, as published by the Free Software
  * Foundation; either version 2 of the License, or (at your option)
  * any later version.
- * 
+ *
  */
 #include <fcntl.h>
 #include <unistd.h>
@@ -39,8 +39,8 @@ ghb_settings_new()
 
 void
 ghb_settings_set_value(
-    GValue *settings, 
-    const gchar *key, 
+    GValue *settings,
+    const gchar *key,
     const GValue *value)
 {
     if (key == NULL || value == NULL)
@@ -56,8 +56,8 @@ ghb_settings_take_value(GValue *settings, const gchar *key, GValue *value)
 
 void
 ghb_settings_set_string(
-    GValue *settings, 
-    const gchar *key, 
+    GValue *settings,
+    const gchar *key,
     const gchar *sval)
 {
     GValue *value;
@@ -183,11 +183,15 @@ const gchar*
 ghb_get_setting_key(GtkWidget *widget)
 {
     const gchar *name;
-    
+
     g_debug("get_setting_key ()\n");
     if (widget == NULL) return NULL;
     name = gtk_buildable_get_name(GTK_BUILDABLE(widget));
-        
+
+    if (name == NULL)
+    {
+        name = gtk_widget_get_name(widget);
+    }
     if (name == NULL)
     {
         // Bad widget pointer?  Should never happen.
@@ -203,7 +207,7 @@ ghb_widget_value(GtkWidget *widget)
     GValue *value = NULL;
     const gchar *name;
     GType type;
-    
+
     if (widget == NULL)
     {
         g_debug("NULL widget\n");
@@ -254,13 +258,6 @@ ghb_widget_value(GtkWidget *widget)
         bval = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
         value = ghb_boolean_value_new(bval);
     }
-    else if (type == GTK_TYPE_TOGGLE_ACTION)
-    {
-        g_debug("\ttoggle action");
-        gboolean bval;
-        bval = gtk_toggle_action_get_active(GTK_TOGGLE_ACTION(widget));
-        value = ghb_boolean_value_new(bval);
-    }
     else if (type == GTK_TYPE_CHECK_MENU_ITEM)
     {
         g_debug("\tcheck_menu_item");
@@ -300,7 +297,7 @@ ghb_widget_value(GtkWidget *widget)
         ival = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(widget));
         value = ghb_int64_value_new(ival);
     }
-    else if (type == GTK_TYPE_HSCALE)
+    else if (type == GTK_TYPE_SCALE)
     {
         gdouble dval;
         gint digits;
@@ -367,7 +364,7 @@ ghb_widget_string(GtkWidget *widget)
 {
     GValue *value;
     gchar *sval;
-    
+
     value = ghb_widget_value(widget);
     sval = ghb_value_string(value);
     ghb_value_free(value);
@@ -379,7 +376,7 @@ ghb_widget_double(GtkWidget *widget)
 {
     GValue *value;
     gdouble dval;
-    
+
     value = ghb_widget_value(widget);
     dval = ghb_value_double(value);
     ghb_value_free(value);
@@ -391,7 +388,7 @@ ghb_widget_int64(GtkWidget *widget)
 {
     GValue *value;
     gint64 ival;
-    
+
     value = ghb_widget_value(widget);
     ival = ghb_value_int64(value);
     ghb_value_free(value);
@@ -403,7 +400,7 @@ ghb_widget_int(GtkWidget *widget)
 {
     GValue *value;
     gint ival;
-    
+
     value = ghb_widget_value(widget);
     ival = (gint)ghb_value_int64(value);
     ghb_value_free(value);
@@ -415,31 +412,11 @@ ghb_widget_boolean(GtkWidget *widget)
 {
     GValue *value;
     gboolean bval;
-    
+
     value = ghb_widget_value(widget);
     bval = ghb_value_boolean(value);
     ghb_value_free(value);
     return bval;
-}
-
-static void check_radio_consistency(GValue *settings, GtkWidget *widget)
-{
-    const gchar *key = NULL;
-    GValue *value;
-
-    if (widget == NULL) return;
-    if (G_OBJECT_TYPE(widget) == GTK_TYPE_RADIO_BUTTON)
-    {
-        // Find corresponding setting
-        key = ghb_get_setting_key(widget);
-        if (key == NULL) return;
-        value = ghb_widget_value(widget);
-        if (value == NULL) return;
-        if (ghb_value_boolean(value) == ghb_settings_get_boolean(settings, key))
-        {
-            gtk_toggle_button_set_inconsistent(GTK_TOGGLE_BUTTON(widget), FALSE);
-        }
-    }
 }
 
 void
@@ -447,7 +424,7 @@ ghb_widget_to_setting(GValue *settings, GtkWidget *widget)
 {
     const gchar *key = NULL;
     GValue *value;
-    
+
     if (widget == NULL) return;
     g_debug("ghb_widget_to_setting");
     // Find corresponding setting
@@ -456,7 +433,6 @@ ghb_widget_to_setting(GValue *settings, GtkWidget *widget)
     value = ghb_widget_value(widget);
     if (value != NULL)
     {
-        check_radio_consistency(settings, widget);
         ghb_settings_take_value(settings, key, value);
     }
     else
@@ -465,15 +441,15 @@ ghb_widget_to_setting(GValue *settings, GtkWidget *widget)
     }
 }
 
-static void
-update_widget(GtkWidget *widget, const GValue *value)
+void
+ghb_update_widget(GtkWidget *widget, const GValue *value)
 {
     GType type;
     gchar *str;
     gint ival;
     gdouble dval;
 
-    g_debug("update_widget");
+    g_debug("ghb_update_widget");
     type = G_VALUE_TYPE(value);
     if (type == ghb_array_get_type() || type == ghb_dict_get_type())
         return;
@@ -482,6 +458,7 @@ update_widget(GtkWidget *widget, const GValue *value)
     ival = ghb_value_int(value);
     dval = ghb_value_double(value);
     type = G_OBJECT_TYPE(widget);
+
     if (type == GTK_TYPE_ENTRY)
     {
         g_debug("entry");
@@ -490,16 +467,8 @@ update_widget(GtkWidget *widget, const GValue *value)
     else if (type == GTK_TYPE_RADIO_BUTTON)
     {
         g_debug("radio button");
-        int cur_val = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-        if (cur_val && !ival)
-        {
-            gtk_toggle_button_set_inconsistent(GTK_TOGGLE_BUTTON(widget), TRUE);
-        }
-        else
-        {
-            gtk_toggle_button_set_inconsistent(GTK_TOGGLE_BUTTON(widget), FALSE);
-            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), ival);
-        }
+        if (ival)
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), !!ival);
     }
     else if (type == GTK_TYPE_CHECK_BUTTON)
     {
@@ -515,11 +484,6 @@ update_widget(GtkWidget *widget, const GValue *value)
     {
         g_debug("toggle button");
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), ival);
-    }
-    else if (type == GTK_TYPE_TOGGLE_ACTION)
-    {
-        g_debug("toggle action");
-        gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(widget), ival);
     }
     else if (type == GTK_TYPE_CHECK_MENU_ITEM)
     {
@@ -591,7 +555,7 @@ update_widget(GtkWidget *widget, const GValue *value)
         g_debug("spin (%s)", str);
         gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), dval);
     }
-    else if (type == GTK_TYPE_HSCALE)
+    else if (type == GTK_TYPE_SCALE)
     {
         g_debug("hscale");
         gtk_range_set_value(GTK_RANGE(widget), dval);
@@ -661,7 +625,7 @@ update_widget(GtkWidget *widget, const GValue *value)
 }
 
 int
-ghb_ui_update_from_settings(GtkBuilder *builder, const gchar *name, const GValue *settings)
+ghb_ui_update_from_settings(signal_user_data_t *ud, const gchar *name, const GValue *settings)
 {
     GObject *object;
     GValue * value;
@@ -672,13 +636,16 @@ ghb_ui_update_from_settings(GtkBuilder *builder, const gchar *name, const GValue
     value = ghb_settings_get_value(settings, name);
     if (value == NULL)
         return 0;
-    object = GHB_OBJECT(builder, name);
+    object = GHB_OBJECT(ud->builder, name);
     if (object == NULL)
     {
         g_debug("Failed to find widget for key: %s\n", name);
         return -1;
     }
-    update_widget((GtkWidget*)object, value);
+    ghb_update_widget((GtkWidget*)object, value);
+    // Its possible the value hasn't changed. Since settings are only
+    // updated when the value changes, I'm initializing settings here as well.
+    ghb_widget_to_setting(ud->settings, (GtkWidget*)object);
     return 0;
 }
 
@@ -696,10 +663,35 @@ ghb_ui_update(signal_user_data_t *ud, const gchar *name, const GValue *value)
         g_debug("Failed to find widget for key: %s\n", name);
         return -1;
     }
-    update_widget((GtkWidget*)object, value);
+    ghb_update_widget((GtkWidget*)object, value);
     // Its possible the value hasn't changed. Since settings are only
     // updated when the value changes, I'm initializing settings here as well.
     ghb_widget_to_setting(ud->settings, (GtkWidget*)object);
+    return 0;
+}
+
+int
+ghb_ui_settings_update(
+    signal_user_data_t *ud,
+    GValue *settings,
+    const gchar *name,
+    const GValue *value)
+{
+    GObject *object;
+
+    g_debug("ghb_ui_update() %s", name);
+    if (name == NULL || value == NULL)
+        return 0;
+    object = GHB_OBJECT(ud->builder, name);
+    if (object == NULL)
+    {
+        g_debug("Failed to find widget for key: %s\n", name);
+        return -1;
+    }
+    ghb_update_widget((GtkWidget*)object, value);
+    // Its possible the value hasn't changed. Since settings are only
+    // updated when the value changes, I'm initializing settings here as well.
+    ghb_widget_to_setting(settings, (GtkWidget*)object);
     return 0;
 }
 

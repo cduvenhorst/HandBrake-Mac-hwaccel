@@ -1,6 +1,6 @@
 /* fifo.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -8,6 +8,7 @@
  */
 
 #include "hb.h"
+#include "openclwrapper.h"
 
 #ifndef SYS_DARWIN
 #include <malloc.h>
@@ -256,7 +257,7 @@ void hb_buffer_pool_free( void )
                     /* OpenCL */
                     if (hb_cl_free_mapped_buffer(b->cl.buffer, b->data) == 0)
                     {
-                        hb_log("hb_buffer_pool_free: bad free: %.16x -> buffer %.16x map %.16x",
+                        hb_log("hb_buffer_pool_free: bad free: %p -> buffer %p map %p",
                                b, b->cl.buffer, b->data);
                     }
                 }
@@ -312,7 +313,8 @@ hb_buffer_t * hb_buffer_init_internal( int size , int needsMapped )
         /* OpenCL */
         if (b != NULL && needsMapped && b->cl.buffer == NULL)
         {
-            // We need a mapped OpenCL buffer and that is not what we got out of the pool.
+            // We need a mapped OpenCL buffer and that is not
+            // what we got out of the pool.
             // Ditch it; it will get replaced with what we need.
             if (b->data != NULL)
             {
@@ -339,9 +341,9 @@ hb_buffer_t * hb_buffer_init_internal( int size , int needsMapped )
             b->alloc = buffer_pool->buffer_size;
             b->size = size;
             b->data = data;
-            b->s.start = -1;
-            b->s.stop = -1;
-            b->s.renderOffset = -1;
+            b->s.start = AV_NOPTS_VALUE;
+            b->s.stop = AV_NOPTS_VALUE;
+            b->s.renderOffset = AV_NOPTS_VALUE;
 
             /* OpenCL */
             b->cl.buffer          = buffer;
@@ -374,18 +376,24 @@ hb_buffer_t * hb_buffer_init_internal( int size , int needsMapped )
         if (needsMapped)
         {
             int status = hb_cl_create_mapped_buffer(&b->cl.buffer, &b->data, b->alloc);
+            if (!status)
+            {
+                hb_error("Failed to map CL buffer");
+                free(b);
+                return NULL;
+            }
         }
         else
         {
             b->cl.buffer = NULL;
 
 #if defined( SYS_DARWIN ) || defined( SYS_FREEBSD ) || defined( SYS_MINGW )
-        b->data  = malloc( b->alloc );
+            b->data  = malloc( b->alloc );
 #elif defined( SYS_CYGWIN )
-        /* FIXME */
-        b->data  = malloc( b->alloc + 17 );
+            /* FIXME */
+            b->data  = malloc( b->alloc + 17 );
 #else
-        b->data  = memalign( 16, b->alloc );
+            b->data  = memalign( 16, b->alloc );
 #endif
         }
 
@@ -399,9 +407,9 @@ hb_buffer_t * hb_buffer_init_internal( int size , int needsMapped )
         buffers.allocated += b->alloc;
         hb_unlock(buffers.lock);
     }
-    b->s.start = -1;
-    b->s.stop = -1;
-    b->s.renderOffset = -1;
+    b->s.start = AV_NOPTS_VALUE;
+    b->s.stop = AV_NOPTS_VALUE;
+    b->s.renderOffset = AV_NOPTS_VALUE;
     return b;
 }
 
@@ -503,7 +511,7 @@ static void hb_buffer_init_planes_internal( hb_buffer_t * b, uint8_t * has_plane
 
 void hb_buffer_init_planes( hb_buffer_t * b )
 {
-    const AVPixFmtDescriptor *desc = &av_pix_fmt_descriptors[b->f.fmt];
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(b->f.fmt);
     int p;
 
     uint8_t has_plane[4] = {0,};
@@ -519,7 +527,7 @@ void hb_buffer_init_planes( hb_buffer_t * b )
 // with pixel format pix_fmt and dimensions width x height.
 hb_buffer_t * hb_frame_buffer_init( int pix_fmt, int width, int height )
 {
-    const AVPixFmtDescriptor *desc = &av_pix_fmt_descriptors[pix_fmt];
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(pix_fmt);
     hb_buffer_t * buf;
     int p;
     uint8_t has_plane[4] = {0,};
@@ -558,7 +566,7 @@ hb_buffer_t * hb_frame_buffer_init( int pix_fmt, int width, int height )
 // with dimensions width x height.
 void hb_video_buffer_realloc( hb_buffer_t * buf, int width, int height )
 {
-    const AVPixFmtDescriptor *desc = &av_pix_fmt_descriptors[buf->f.fmt];
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(buf->f.fmt);
     int p;
     uint8_t has_plane[4] = {0,};
 
@@ -642,7 +650,7 @@ void hb_buffer_close( hb_buffer_t ** _b )
                 /* OpenCL */
                 if (hb_cl_free_mapped_buffer(b->cl.buffer, b->data) == 0)
                 {
-                    hb_log("hb_buffer_pool_free: bad free %.16x -> buffer %.16x map %.16x",
+                    hb_log("hb_buffer_pool_free: bad free %p -> buffer %p map %p",
                            b, b->cl.buffer, b->data);
                 }
             }

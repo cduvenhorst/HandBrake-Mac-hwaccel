@@ -13,12 +13,15 @@ namespace HandBrakeWPF.ViewModels
     using System.Windows;
 
     using HandBrake.ApplicationServices.Model;
+    using HandBrake.ApplicationServices.Model.Audio;
+    using HandBrake.ApplicationServices.Model.Subtitle;
     using HandBrake.ApplicationServices.Parsing;
     using HandBrake.ApplicationServices.Services;
     using HandBrake.ApplicationServices.Services.Interfaces;
     using HandBrake.ApplicationServices.Utilities;
     using HandBrake.Interop.Model.Encoding;
 
+    using HandBrakeWPF.Properties;
     using HandBrakeWPF.Services.Interfaces;
     using HandBrakeWPF.ViewModels.Interfaces;
 
@@ -131,9 +134,17 @@ namespace HandBrakeWPF.ViewModels
         /// <param name="title">
         /// The title.
         /// </param>
-        public void Setup(EncodeTask task, Title title)
+        /// <param name="audioBehaviours">
+        /// The audio Behaviours.
+        /// </param>
+        /// <param name="subtitleBehaviours">
+        /// The subtitle Behaviours.
+        /// </param>
+        public void Setup(EncodeTask task, Title title, AudioBehaviours audioBehaviours, SubtitleBehaviours subtitleBehaviours)
         {
             this.Preset.Task = new EncodeTask(task);
+            this.Preset.AudioTrackBehaviours = audioBehaviours.Clone();
+            this.Preset.SubtitleTrackBehaviours = subtitleBehaviours.Clone();
             this.selectedTitle = title;
 
             switch (task.Anamorphic)
@@ -154,13 +165,13 @@ namespace HandBrakeWPF.ViewModels
         {
             if (string.IsNullOrEmpty(this.Preset.Name))
             {
-                this.errorService.ShowMessageBox("A Preset must have a Name. Please fill out the Preset Name field.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                this.errorService.ShowMessageBox("A Preset must have a Name. Please fill out the Preset Name field.", Resources.Error, MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
             if (this.presetService.CheckIfPresetExists(this.Preset.Name))
             {
-                MessageBoxResult result = this.errorService.ShowMessageBox("A Preset with this name already exists. Would you like to overwrite it?", "Error", MessageBoxButton.YesNo, MessageBoxImage.Error);
+                MessageBoxResult result = this.errorService.ShowMessageBox("A Preset with this name already exists. Would you like to overwrite it?", Resources.Error, MessageBoxButton.YesNo, MessageBoxImage.Error);
                 if (result == MessageBoxResult.No)
                 {
                     return;
@@ -169,7 +180,7 @@ namespace HandBrakeWPF.ViewModels
 
             if (this.SelectedPictureSettingMode == PresetPictureSettingsMode.SourceMaximum && this.selectedTitle == null)
             {
-                this.errorService.ShowMessageBox("You must first scan a source to use the 'Source Maximum' Option.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                this.errorService.ShowMessageBox("You must first scan a source to use the 'Source Maximum' Option.", Resources.Error, MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 

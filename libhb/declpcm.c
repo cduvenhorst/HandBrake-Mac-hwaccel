@@ -1,6 +1,6 @@
 /* declpcm.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -330,8 +330,7 @@ static hb_buffer_t *Decode( hb_work_object_t *w )
     }
 
     hb_audio_resample_set_channel_layout(pv->resample,
-                                         hdr2layout[pv->nchannels - 1],
-                                         pv->nchannels);
+                                         hdr2layout[pv->nchannels - 1]);
     if (hb_audio_resample_update(pv->resample))
     {
         hb_log("declpcm: hb_audio_resample_update() failed");
@@ -379,6 +378,7 @@ static int declpcmBSInfo( hb_work_object_t *w, const hb_buffer_t *b,
     info->rate_base = 1;
     info->bitrate = bitrate;
     info->flags = ( b->data[3] << 16 ) | ( b->data[4] << 8 ) | b->data[5];
+    info->matrix_encoding = AV_MATRIX_ENCODING_NONE;
     info->channel_layout = hdr2layout[nchannels - 1];
     info->channel_map = &hb_libav_chan_map;
     info->samples_per_frame = ( duration * rate ) / 90000;

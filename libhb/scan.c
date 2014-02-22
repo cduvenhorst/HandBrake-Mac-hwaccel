@@ -1,6 +1,6 @@
 /* scan.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -10,7 +10,6 @@
 #include "hb.h"
 #include "opencl.h"
 #include "hbffmpeg.h"
-#include "a52dec/a52.h"
 
 typedef struct
 {
@@ -517,15 +516,12 @@ static int DecodePreviews( hb_scan_t * data, hb_title_t * title )
         data->stream = hb_stream_open( title->path, title, 1 );
     }
 
-    int vcodec = title->video_codec? title->video_codec : WORK_DECMPEG2;
-#if defined(USE_FF_MPEG2)
-    if (vcodec == WORK_DECMPEG2)
+    if (title->video_codec == WORK_NONE)
     {
-        vcodec = WORK_DECAVCODECV;
-        title->video_codec_param = AV_CODEC_ID_MPEG2VIDEO;
+        hb_error("No video decoder set!");
+        return 0;
     }
-#endif
-    hb_work_object_t *vid_decoder = hb_get_work( vcodec );
+    hb_work_object_t *vid_decoder = hb_get_work(title->video_codec);
     vid_decoder->codec_param = title->video_codec_param;
     vid_decoder->title = title;
     vid_decoder->init( vid_decoder, NULL );
@@ -1032,18 +1028,124 @@ static void LookForAudio( hb_title_t * title, hb_buffer_t * b )
     audio->config.in.samplerate = info.rate;
     audio->config.in.samples_per_frame = info.samples_per_frame;
     audio->config.in.bitrate = info.bitrate;
+    audio->config.in.matrix_encoding = info.matrix_encoding;
     audio->config.in.channel_layout = info.channel_layout;
     audio->config.in.channel_map = info.channel_map;
     audio->config.in.version = info.version;
     audio->config.in.flags = info.flags;
     audio->config.in.mode = info.mode;
 
-    // update the audio description string based on the info we found
-    if (audio->config.in.channel_layout == AV_CH_LAYOUT_STEREO_DOWNMIX)
+    // now that we have all the info, set the audio description
+    const char *codec_name = NULL;
+    if (audio->config.in.codec & HB_ACODEC_FF_MASK)
     {
-        strcat(audio->config.lang.description, " (Dolby Surround)");
+        AVCodec *codec = avcodec_find_decoder(audio->config.in.codec_param);
+        if (codec != NULL)
+        {
+            if (info.profile != FF_PROFILE_UNKNOWN)
+            {
+                codec_name = av_get_profile_name(codec, info.profile);
+            }
+            if (codec_name == NULL)
+            {
+                // use our own capitalization for the most common codecs
+                switch (audio->config.in.codec_param)
+                {
+                    case AV_CODEC_ID_AAC:
+                        codec_name = "AAC";
+                        break;
+                    case AV_CODEC_ID_AC3:
+                        codec_name = "AC3";
+                        break;
+                    case AV_CODEC_ID_EAC3:
+                        codec_name = "E-AC3";
+                        break;
+                    case AV_CODEC_ID_TRUEHD:
+                        codec_name = "TrueHD";
+                        break;
+                    case AV_CODEC_ID_DTS:
+                        codec_name = audio->config.in.codec == HB_ACODEC_DCA_HD ? "DTS-HD" : "DTS";
+                        break;
+                    case AV_CODEC_ID_FLAC:
+                        codec_name = "FLAC";
+                        break;
+                    case AV_CODEC_ID_MP2:
+                        codec_name = "MPEG";
+                        break;
+                    case AV_CODEC_ID_MP3:
+                        codec_name = "MP3";
+                        break;
+                    case AV_CODEC_ID_PCM_BLURAY:
+                        codec_name = "BD LPCM";
+                        break;
+                    case AV_CODEC_ID_OPUS:
+                        codec_name = "Opus";
+                        break;
+                    case AV_CODEC_ID_VORBIS:
+                        codec_name = "Vorbis";
+                        break;
+                    default:
+                        codec_name = codec->name;
+                        break;
+                }
+            }
+        }
+        else
+        {
+            switch (audio->config.in.codec)
+            {
+                case HB_ACODEC_DCA:
+                    codec_name = "DTS";
+                    break;
+                case HB_ACODEC_DCA_HD:
+                    codec_name = "DTS-HD";
+                    break;
+                case HB_ACODEC_FFAAC:
+                    codec_name = "AAC";
+                    break;
+                case HB_ACODEC_MP3:
+                    codec_name = "MP3";
+                    break;
+                default:
+                    codec_name = "Unknown (libav)";
+                    break;
+            }
+        }
     }
-    else if (audio->config.in.channel_layout)
+    else
+    {
+        switch (audio->config.in.codec)
+        {
+            case HB_ACODEC_AC3:
+                codec_name = "AC3";
+                break;
+            case HB_ACODEC_LPCM:
+                codec_name = "LPCM";
+                break;
+            default:
+                codec_name = "Unknown";
+                break;
+        }
+    }
+    sprintf(audio->config.lang.description, "%s (%s)",
+            audio->config.lang.simple, codec_name);
+
+    switch (audio->config.lang.type)
+    {
+        case 2:
+            strcat(audio->config.lang.description, " (Visually Impaired)");
+            break;
+        case 3:
+            strcat(audio->config.lang.description, " (Director's Commentary 1)");
+            break;
+        case 4:
+            strcat(audio->config.lang.description, " (Director's Commentary 2)");
+            break;
+        default:
+            break;
+    }
+
+    if (audio->config.in.channel_layout)
     {
         int lfes     = (!!(audio->config.in.channel_layout & AV_CH_LOW_FREQUENCY) +
                         !!(audio->config.in.channel_layout & AV_CH_LOW_FREQUENCY_2));
@@ -1051,6 +1153,39 @@ static void LookForAudio( hb_title_t * title, hb_buffer_t * b )
         char *desc   = audio->config.lang.description +
                         strlen(audio->config.lang.description);
         sprintf(desc, " (%d.%d ch)", channels - lfes, lfes);
+
+        // describe the matrix encoding mode, if any
+        switch (audio->config.in.matrix_encoding)
+        {
+            case AV_MATRIX_ENCODING_DOLBY:
+                if (audio->config.in.codec       == HB_ACODEC_AC3    ||
+                    audio->config.in.codec_param == AV_CODEC_ID_AC3  ||
+                    audio->config.in.codec_param == AV_CODEC_ID_EAC3 ||
+                    audio->config.in.codec_param == AV_CODEC_ID_TRUEHD)
+                {
+                    strcat(audio->config.lang.description, " (Dolby Surround)");
+                    break;
+                }
+                strcat(audio->config.lang.description, " (Lt/Rt)");
+                break;
+            case AV_MATRIX_ENCODING_DPLII:
+                strcat(audio->config.lang.description, " (Dolby Pro Logic II)");
+                break;
+            case AV_MATRIX_ENCODING_DPLIIX:
+                strcat(audio->config.lang.description, " (Dolby Pro Logic IIx)");
+                break;
+            case AV_MATRIX_ENCODING_DPLIIZ:
+                strcat(audio->config.lang.description, " (Dolby Pro Logic IIz)");
+                break;
+            case AV_MATRIX_ENCODING_DOLBYEX:
+                strcat(audio->config.lang.description, " (Dolby Digital EX)");
+                break;
+            case AV_MATRIX_ENCODING_DOLBYHEADPHONE:
+                strcat(audio->config.lang.description, " (Dolby Headphone)");
+                break;
+            default:
+                break;
+        }
     }
 
     hb_log( "scan: audio 0x%x: %s, rate=%dHz, bitrate=%d %s", audio->id,

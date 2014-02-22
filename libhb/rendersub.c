@@ -1,6 +1,6 @@
 /* rendersub.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -258,8 +258,8 @@ static void ApplyVOBSubs( hb_filter_private_t * pv, hb_buffer_t * buf )
         else
             next = NULL;
 
-        if ((sub->s.stop != -1 && sub->s.stop <= buf->s.start) ||
-            (next != NULL && sub->s.stop == -1 && next->s.start <= buf->s.start))
+        if ((sub->s.stop != AV_NOPTS_VALUE && sub->s.stop <= buf->s.start) ||
+            (next != NULL && sub->s.stop == AV_NOPTS_VALUE && next->s.start <= buf->s.start))
         {
             // Subtitle stop is in the past, delete it
             hb_list_rem( pv->sub_list, sub );
@@ -548,7 +548,7 @@ static int ssa_work( hb_filter_object_t * filter,
     {
         // Parse MKV-SSA packet
         // SSA subtitles always have an explicit stop time, so we
-        // do not need to do special processing for stop == -1
+        // do not need to do special processing for stop == AV_NOPTS_VALUE
         ass_process_chunk( pv->ssaTrack, (char*)sub->data, sub->size,
                            sub->s.start / 90,
                            (sub->s.stop - sub->s.start) / 90 );

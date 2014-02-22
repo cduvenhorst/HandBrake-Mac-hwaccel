@@ -1,6 +1,6 @@
 /* muxmp4.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -12,7 +12,6 @@
 #if defined(USE_MP4V2)
 
 #include "mp4v2/mp4v2.h"
-#include "a52dec/a52.h"
 
 struct hb_mux_object_s
 {
@@ -316,8 +315,42 @@ static int MP4Init( hb_mux_object_t * m )
                 if ( audio->config.out.codec & HB_ACODEC_PASS_FLAG )
                 {
                     bsmod                       = audio->config.in.mode;
-                    acmod                       = audio->config.in.flags & 0x7;
-                    lfeon                       = !!(audio->config.in.flags & A52_LFE);
+                    switch (audio->config.in.channel_layout & ~AV_CH_LOW_FREQUENCY)
+                    {
+                        case AV_CH_LAYOUT_MONO:
+                            acmod = 1;
+                            break;
+
+                        case AV_CH_LAYOUT_STEREO:
+                            acmod = 2;
+                            break;
+
+                        case AV_CH_LAYOUT_SURROUND:
+                            acmod = 3;
+                            break;
+
+                        case AV_CH_LAYOUT_2_1:
+                            acmod = 4;
+                            break;
+
+                        case AV_CH_LAYOUT_4POINT0:
+                            acmod = 5;
+                            break;
+
+                        case AV_CH_LAYOUT_2_2:
+                            acmod = 6;
+                            break;
+
+                        case AV_CH_LAYOUT_5POINT0:
+                            acmod = 7;
+                            break;
+
+                        default:
+                            hb_error("MP4Init: bad mixdown");
+                            acmod = 2;
+                            break;
+                    }
+                    lfeon                       = !!(audio->config.in.channel_layout & AV_CH_LOW_FREQUENCY);
                     bitrate                     = audio->config.in.bitrate;
                     mux_data->sample_rate       = audio->config.in.samplerate;
                     mux_data->samples_per_frame = audio->config.in.samples_per_frame;
@@ -691,7 +724,7 @@ static int MP4Mux( hb_mux_object_t * m, hb_mux_data_t * mux_data,
                    hb_buffer_t * buf )
 {
     hb_job_t * job = m->job;
-    int64_t duration, stop = -1;
+    int64_t duration, stop = AV_NOPTS_VALUE;
     int64_t offset = 0;
     hb_buffer_t *tmp;
 

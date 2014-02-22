@@ -1,6 +1,6 @@
 /* rorate.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -9,7 +9,6 @@
  
 #include "hb.h"
 #include "hbffmpeg.h"
-//#include "mpeg2dec/mpeg2.h"
 #include "taskset.h"
 
 #define MODE_DEFAULT     3

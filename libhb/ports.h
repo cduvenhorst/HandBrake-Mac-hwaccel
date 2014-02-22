@@ -1,6 +1,6 @@
 /* ports.h
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -12,9 +12,14 @@
 
 #if defined(_WIN32)
 #define DIR_SEP_STR "\\"
+#define DIR_SEP_CHAR '\\'
+#define IS_DIR_SEP(c) (c == '\\' || c == '/')
 #else
 #define DIR_SEP_STR "/"
+#define DIR_SEP_CHAR '/'
+#define IS_DIR_SEP(c) (c == '/')
 #endif
+
 
 /************************************************************************
  * CPU info utilities
@@ -23,15 +28,16 @@ enum hb_cpu_platform
 {
     // list of microarchitecture codenames
     HB_CPU_PLATFORM_UNSPECIFIED = 0,
+    HB_CPU_PLATFORM_INTEL_BNL,
     HB_CPU_PLATFORM_INTEL_SNB,
     HB_CPU_PLATFORM_INTEL_IVB,
+    HB_CPU_PLATFORM_INTEL_SLM,
     HB_CPU_PLATFORM_INTEL_HSW,
 };
 int         hb_get_cpu_count();
 int         hb_get_cpu_platform();
 const char* hb_get_cpu_name();
 const char* hb_get_cpu_platform_name();
-extern void ff_cpu_cpuid(int index, int *eax, int *ebx, int *ecx, int *edx);
 
 /************************************************************************
  * Utils
@@ -65,10 +71,12 @@ typedef struct stat hb_stat_t;
 
 HB_DIR* hb_opendir(char *path);
 int hb_closedir(HB_DIR *dir);
+void hb_rewinddir(HB_DIR *dir);
 struct dirent * hb_readdir(HB_DIR *dir);
 int hb_mkdir(char * name);
 int hb_stat(const char *path, hb_stat_t *sb);
 FILE * hb_fopen(const char *path, const char *mode);
+char * hb_strr_dir_sep(const char *path);
 
 #ifdef __LIBHB__
 

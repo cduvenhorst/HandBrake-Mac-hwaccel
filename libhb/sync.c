@@ -1,6 +1,6 @@
 /* sync.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -129,7 +129,7 @@ hb_work_object_t * hb_sync_init( hb_job_t * job )
     pv->common = calloc( 1, sizeof( hb_sync_common_t ) );
     pv->common->ref++;
     pv->common->mutex = hb_lock_init();
-    pv->common->audio_pts_thresh = -1;
+    pv->common->audio_pts_thresh = AV_NOPTS_VALUE;
     pv->common->next_frame = hb_cond_init();
     pv->common->pts_count = 1;
     if ( job->frame_to_start || job->pts_to_start )
@@ -316,7 +316,7 @@ static hb_buffer_t * mergeSubtitles(subtitle_sanitizer_t *sanitizer, int end)
             a->next = NULL;
             buf = a;
         }
-        else if (a != NULL && a->s.stop != -1)
+        else if (a != NULL && a->s.stop != AV_NOPTS_VALUE)
         {
             b = a->next;
 
@@ -345,7 +345,7 @@ static hb_buffer_t * mergeSubtitles(subtitle_sanitizer_t *sanitizer, int end)
                     sprintf((char*)buf->data, "%s\n%s", a->data, b->data);
                     hb_buffer_close(&a);
 
-                    if (b->s.stop != -1 && ABS(b->s.stop - b->s.start) <= 18000)
+                    if (b->s.stop != AV_NOPTS_VALUE && ABS(b->s.stop - b->s.start) <= 18000)
                     {
                         // b and a completely overlap, remove b
                         sanitizer->list_current = b->next;
@@ -374,10 +374,10 @@ static hb_buffer_t * mergeSubtitles(subtitle_sanitizer_t *sanitizer, int end)
 
         if (buf != NULL)
         {
-            if (buf->s.stop != -1)
+            if (buf->s.stop != AV_NOPTS_VALUE)
                 buf->s.duration = buf->s.stop - buf->s.start;
             else
-                buf->s.duration = -1;
+                buf->s.duration = AV_NOPTS_VALUE;
             if (last == NULL)
             {
                 out = last = buf;
@@ -416,13 +416,13 @@ static hb_buffer_t * sanitizeSubtitle(
 
     hb_lock( pv->common->mutex );
     sub->s.start -= pv->common->video_pts_slip;
-    if (sub->s.stop != -1)
+    if (sub->s.stop != AV_NOPTS_VALUE)
         sub->s.stop -= pv->common->video_pts_slip;
-    if (sub->s.renderOffset != -1)
+    if (sub->s.renderOffset != AV_NOPTS_VALUE)
         sub->s.renderOffset -= pv->common->video_pts_slip;
     hb_unlock( pv->common->mutex );
 
-    if (sanitizer->last != NULL && sanitizer->last->s.stop == -1)
+    if (sanitizer->last != NULL && sanitizer->last->s.stop == AV_NOPTS_VALUE)
     {
         sanitizer->last->s.stop = sub->s.start;
     }
@@ -845,7 +845,7 @@ int syncVideoWork( hb_work_object_t * w, hb_buffer_t ** buf_in,
     sync->cur = cur = next;
     cur->sub = NULL;
     cur->s.start -= pv->common->video_pts_slip;
-    if (cur->s.renderOffset != -1)
+    if (cur->s.renderOffset != AV_NOPTS_VALUE)
         cur->s.renderOffset -= pv->common->video_pts_slip;
     cur->s.stop -= pv->common->video_pts_slip;
     sync->pts_skip = 0;
@@ -1193,7 +1193,7 @@ static void InitAudio( hb_job_t * job, hb_sync_common_t * common, int i )
             } break;
             case HB_ACODEC_AAC_PASS:
             {
-                codec = avcodec_find_encoder( AV_CODEC_ID_AAC );
+                codec = avcodec_find_encoder_by_name("aac");
             } break;
             default:
             {
@@ -1254,7 +1254,9 @@ static void InitAudio( hb_job_t * job, hb_sync_common_t * common, int i )
                 int ret = avcodec_encode_audio2( c, &pkt, &frame, &got_packet);
                 if ( ret < 0 )
                 {
-                    hb_log( "sync: avcodec_encode_audio failed" );
+                    hb_log("sync: track %d, avcodec_encode_audio() failed, dropping video to sync",
+                           w->audio->config.out.track);
+                    sync->drop_video_to_sync = 1;
                     break;
                 }
 
@@ -1262,6 +1264,12 @@ static void InitAudio( hb_job_t * job, hb_sync_common_t * common, int i )
                 {
                     sync->silence_size = pkt.size;
                     break;
+                }
+                else if (ii + 1 == 10)
+                {
+                    hb_log("sync: track %d, failed to get output packet, dropping video to sync",
+                           w->audio->config.out.track);
+                    sync->drop_video_to_sync = 1;
                 }
             }
             free( zeros );

@@ -1,6 +1,6 @@
 /* dvdnav.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -334,11 +334,14 @@ static hb_title_t * hb_dvdnav_title_scan( hb_dvd_t * e, int t, uint64_t min_dura
         char * p_cur, * p_last = d->path;
         for( p_cur = d->path; *p_cur; p_cur++ )
         {
-            if( p_cur[0] == '/' && p_cur[1] )
+            if( IS_DIR_SEP(p_cur[0]) && p_cur[1] )
             {
                 p_last = &p_cur[1];
             }
         }
+        char *dot_term = strrchr(p_last, '.');
+        if (dot_term)
+            *dot_term = '\0';
         snprintf( title->name, sizeof( title->name ), "%s", p_last );
     }
 
@@ -528,6 +531,7 @@ static hb_title_t * hb_dvdnav_title_scan( hb_dvd_t * e, int t, uint64_t min_dura
             case 0x00:
                 audio->id    = ( ( 0x80 + position ) << 8 ) | 0xbd;
                 audio->config.in.codec = HB_ACODEC_AC3;
+                audio->config.in.codec_param = AV_CODEC_ID_AC3;
                 codec_name = "AC3";
                 break;
 
@@ -592,28 +596,10 @@ static hb_title_t * hb_dvdnav_title_scan( hb_dvd_t * e, int t, uint64_t min_dura
                   strlen( lang->native_name ) ? lang->native_name : lang->eng_name );
         snprintf( audio->config.lang.iso639_2,
                   sizeof( audio->config.lang.iso639_2 ), "%s", lang->iso639_2 );
-        snprintf( audio->config.lang.description,
-                  sizeof( audio->config.lang.description ), "%s (%s)",
-                  audio->config.lang.simple, codec_name );
 
-        switch( lang_extension )
-        {
-            case 2:
-                strcat( audio->config.lang.description, " (Visually Impaired)" );
-                break;
-            case 3:
-                strcat( audio->config.lang.description, " (Director's Commentary 1)" );
-                break;
-            case 4:
-                strcat( audio->config.lang.description, " (Director's Commentary 2)" );
-                break;
-            default:
-                break;
-        }
-
-        hb_log( "scan: id=0x%x, lang=%s, 3cc=%s ext=%i", audio->id,
-                audio->config.lang.description, audio->config.lang.iso639_2,
-                lang_extension );
+        hb_log("scan: id=0x%x, lang=%s (%s), 3cc=%s ext=%i", audio->id,
+               audio->config.lang.simple, codec_name,
+               audio->config.lang.iso639_2, lang_extension);
 
         audio->config.in.track = i;
         hb_list_add( title->list_audio, audio );

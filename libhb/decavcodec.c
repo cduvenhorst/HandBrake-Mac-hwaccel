@@ -1,6 +1,6 @@
 /* decavcodec.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -18,7 +18,7 @@
         has different decoder calling conventions for audio & video.
         These work objects are self-contained & follow all
         of HB's conventions for a decoder module. They can be used like
-        any other HB decoder (deca52, decmpeg2, etc.).
+        any other HB decoder
 
     These decoders handle 2 kinds of input.  Streams that are demuxed
     by HandBrake and streams that are demuxed by libavformat.  In the
@@ -86,6 +86,7 @@ struct hb_work_private_s
     hb_title_t      *title;
     AVCodecContext  *context;
     AVCodecParserContext *parser;
+    AVFrame         *frame;
     int             threads;
     int             video_codec_opened;
     hb_list_t       *list;
@@ -129,6 +130,8 @@ struct hb_work_private_s
 #endif
     } qsv;
 #endif
+
+    hb_list_t          * list_subtitle;
 };
 
 #ifdef USE_QSV_PTS_WORKAROUND
@@ -193,7 +196,7 @@ static int64_t heap_pop( pts_heap_t *heap )
 
     if ( heap->nheap <= 0 )
     {
-        return -1;
+        return AV_NOPTS_VALUE;
     }
 
     // return the top of the heap then put the bottom element on top,
@@ -299,37 +302,118 @@ static int decavcodecaInit( hb_work_object_t * w, hb_job_t * job )
             hb_error("decavcodecaInit: hb_audio_resample_init() failed");
             return 1;
         }
-        // some decoders can downmix using embedded coefficients,
-        // or dedicated audio substreams for a specific channel layout
-        switch (w->audio->config.out.mixdown)
+        /*
+         * Some audio decoders can downmix using embedded coefficients,
+         * or dedicated audio substreams for a specific channel layout.
+         *
+         * But some will e.g. use normalized mix coefficients unconditionally,
+         * so we need to make sure this matches what the user actually requested.
+         */
+        int avcodec_downmix = 0;
+        switch (w->codec_param)
         {
-            case HB_AMIXDOWN_MONO:
-                if (w->codec_param == AV_CODEC_ID_TRUEHD)
-                {
-                    // libavcodec can't decode TrueHD Mono (bug #356)
-                    // work around it by requesting Stereo and downmixing
-                    pv->context->request_channels       = 2;
-                    pv->context->request_channel_layout = AV_CH_LAYOUT_STEREO;
-                    break;
-                }
-                pv->context->request_channel_layout = AV_CH_LAYOUT_MONO;
+            case AV_CODEC_ID_AC3:
+            case AV_CODEC_ID_EAC3:
+                avcodec_downmix = w->audio->config.out.normalize_mix_level != 0;
                 break;
-            // request 5.1 before downmixing to dpl1/dpl2
-            case HB_AMIXDOWN_DOLBY:
-            case HB_AMIXDOWN_DOLBYPLII:
-                pv->context->request_channel_layout = AV_CH_LAYOUT_5POINT1;
+            case AV_CODEC_ID_DTS:
+                avcodec_downmix = w->audio->config.out.normalize_mix_level == 0;
                 break;
-            // request the layout corresponding to the selected mixdown
+            case AV_CODEC_ID_TRUEHD:
+                avcodec_downmix = (w->audio->config.out.normalize_mix_level == 0     ||
+                                   w->audio->config.out.mixdown == HB_AMIXDOWN_MONO  ||
+                                   w->audio->config.out.mixdown == HB_AMIXDOWN_DOLBY ||
+                                   w->audio->config.out.mixdown == HB_AMIXDOWN_DOLBYPLII);
+                break;
             default:
-                pv->context->request_channel_layout =
-                    hb_ff_mixdown_xlat(w->audio->config.out.mixdown, NULL);
                 break;
+        }
+        if (avcodec_downmix)
+        {
+            switch (w->audio->config.out.mixdown)
+            {
+                case HB_AMIXDOWN_MONO:
+                    if (w->codec_param == AV_CODEC_ID_TRUEHD)
+                    {
+                        // libavcodec can't decode TrueHD Mono (bug #356)
+                        // work around it by requesting Stereo and downmixing
+                        pv->context->request_channel_layout = AV_CH_LAYOUT_STEREO;
+                        break;
+                    }
+                    pv->context->request_channel_layout = AV_CH_LAYOUT_MONO;
+                    break;
+                // request 5.1 before downmixing to dpl1/dpl2
+                case HB_AMIXDOWN_DOLBY:
+                case HB_AMIXDOWN_DOLBYPLII:
+                    pv->context->request_channel_layout = AV_CH_LAYOUT_5POINT1;
+                    break;
+                // request the layout corresponding to the selected mixdown
+                default:
+                    pv->context->request_channel_layout =
+                        hb_ff_mixdown_xlat(w->audio->config.out.mixdown, NULL);
+                    break;
+            }
         }
     }
 
-    if (hb_avcodec_open(pv->context, codec, NULL, 0))
+    // Set decoder opts...
+    AVDictionary * av_opts = NULL;
+    av_dict_set( &av_opts, "refcounted_frames", "1", 0 );
+
+    // Dynamic Range Compression
+    if (w->audio->config.out.dynamic_range_compression >= 0.0f &&
+        hb_audio_can_apply_drc(w->audio->config.in.codec,
+                               w->audio->config.in.codec_param, 0))
     {
+        float drc_scale_max = 1.0f;
+        /*
+         * avcodec_open will fail if the value for any of the options is out of
+         * range, so assume a conservative maximum of 1 and try to determine the
+         * option's actual upper limit.
+         */
+        if (codec != NULL && codec->priv_class != NULL)
+        {
+            const AVOption *opt;
+            opt = av_opt_find2((void*)&codec->priv_class, "drc_scale", NULL,
+                               AV_OPT_FLAG_DECODING_PARAM|AV_OPT_FLAG_AUDIO_PARAM,
+                               AV_OPT_SEARCH_FAKE_OBJ, NULL);
+            if (opt != NULL)
+            {
+                drc_scale_max = opt->max;
+            }
+        }
+        if (w->audio->config.out.dynamic_range_compression > drc_scale_max)
+        {
+            hb_log("decavcodecaInit: track %d, sanitizing out-of-range DRC %.2f to %.2f",
+                   w->audio->config.out.track,
+                   w->audio->config.out.dynamic_range_compression, drc_scale_max);
+            w->audio->config.out.dynamic_range_compression = drc_scale_max;
+        }
+
+        char drc_scale[5]; // "?.??\n"
+        snprintf(drc_scale, sizeof(drc_scale), "%.2f",
+                 w->audio->config.out.dynamic_range_compression);
+        av_dict_set(&av_opts, "drc_scale", drc_scale, 0);
+    }
+
+    if (hb_avcodec_open(pv->context, codec, &av_opts, 0))
+    {
+        av_dict_free( &av_opts );
         hb_log("decavcodecaInit: avcodec_open failed");
+        return 1;
+    }
+    // avcodec_open populates av_opts with the things it didn't recognize.
+    AVDictionaryEntry *t = NULL;
+    while ((t = av_dict_get(av_opts, "", t, AV_DICT_IGNORE_SUFFIX)) != NULL)
+    {
+            hb_log("decavcodecaInit: unknown option '%s'", t->key);
+    }
+    av_dict_free( &av_opts );
+
+    pv->frame = av_frame_alloc();
+    if (pv->frame == NULL)
+    {
+        hb_log("decavcodecaInit: av_frame_alloc failed");
         return 1;
     }
 
@@ -357,6 +441,7 @@ static void closePrivData( hb_work_private_t ** ppv )
                     pv->context->codec->name, pv->nframes, pv->decode_errors,
                     pv->ndrops );
         }
+        av_frame_free(&pv->frame);
         if ( pv->sws_context )
         {
             sws_freeContext( pv->sws_context );
@@ -385,7 +470,7 @@ static void closePrivData( hb_work_private_t ** ppv )
         if ( pv->context )
         {
             av_freep( &pv->context->extradata );
-            av_free( pv->context );
+            av_freep( &pv->context );
         }
         if ( pv->list )
         {
@@ -405,7 +490,7 @@ static void closePrivData( hb_work_private_t ** ppv )
                 HB_OCL_BUF_FREE(hb_ocl, pv->dxva2->cl_mem_nv12);
             }
             hb_va_close(pv->dxva2);
-        }        
+        }
 #endif
 
 #ifdef USE_QSV_PTS_WORKAROUND
@@ -430,7 +515,7 @@ static void closePrivData( hb_work_private_t ** ppv )
 static void decavcodecClose( hb_work_object_t * w )
 {
     hb_work_private_t * pv = w->private_data;
-#ifdef USE_HWD    
+#ifdef USE_HWD
     if( pv->dst_frame ) free( pv->dst_frame );
 #endif
     if ( pv )
@@ -461,7 +546,7 @@ static int decavcodecaWork( hb_work_object_t * w, hb_buffer_t ** buf_in,
 
     *buf_out = NULL;
 
-    if ( in->s.start < -1 && pv->pts_next <= 0 )
+    if ( in->s.start < 0 && pv->pts_next <= 0 )
     {
         // discard buffers that start before video time 0
         return HB_WORK_OK;
@@ -481,8 +566,6 @@ static int decavcodecaWork( hb_work_object_t * w, hb_buffer_t ** buf_in,
             len = av_parser_parse2( pv->parser, pv->context, &pout, &pout_len,
                                 in->data + pos, in->size - pos, cur, cur, 0 );
             cur = pv->parser->pts;
-            if ( cur == AV_NOPTS_VALUE )
-                cur = -1;
         }
         else
         {
@@ -566,28 +649,28 @@ static int decavcodecaBSInfo( hb_work_object_t *w, const hb_buffer_t *buf,
     {
         return -1;
     }
-    unsigned char *pbuffer;
-    int pos, pbuffer_size;
+    unsigned char *parse_buffer;
+    int parse_pos, dec_pos, parse_buffer_size;
 
     while (buf != NULL && !ret)
     {
-        pos = 0;
-        while (pos < buf->size)
+        parse_pos = 0;
+        while (parse_pos < buf->size)
         {
-            int len, truehd_mono = 0;
+            int parse_len, truehd_mono = 0;
 
             if (parser != NULL)
             {
-                len = av_parser_parse2(parser, context, &pbuffer, &pbuffer_size,
-                                       buf->data + pos, buf->size - pos,
-                                       buf->s.start, buf->s.start, 0);
+                parse_len = av_parser_parse2(parser, context,
+                                &parse_buffer, &parse_buffer_size,
+                                buf->data + parse_pos, buf->size - parse_pos,
+                                buf->s.start, buf->s.start, 0);
             }
             else
             {
-                pbuffer = buf->data;
-                len = pbuffer_size = buf->size;
+                parse_buffer = buf->data + parse_pos;
+                parse_len = parse_buffer_size = buf->size - parse_pos;
             }
-            pos += len;
 
             // libavcodec can't decode TrueHD Mono (bug #356)
             // work around it by requesting Stereo before decoding
@@ -595,37 +678,49 @@ static int decavcodecaBSInfo( hb_work_object_t *w, const hb_buffer_t *buf,
                 context->channel_layout == AV_CH_LAYOUT_MONO)
             {
                 truehd_mono                     = 1;
-                context->request_channels       = 2;
                 context->request_channel_layout = AV_CH_LAYOUT_STEREO;
             }
             else
             {
-                context->request_channels       = 0;
                 context->request_channel_layout = 0;
             }
 
-            if (pbuffer_size > 0)
+            dec_pos = 0;
+            while (dec_pos < parse_buffer_size)
             {
+                int dec_len;
                 int got_frame;
-                AVFrame frame = { { 0 } };
+                AVFrame *frame = av_frame_alloc();
                 AVPacket avp;
                 av_init_packet(&avp);
-                avp.data = pbuffer;
-                avp.size = pbuffer_size;
+                avp.data = parse_buffer + dec_pos;
+                avp.size = parse_buffer_size - dec_pos;
 
-                len = avcodec_decode_audio4(context, &frame, &got_frame, &avp);
-                if (len > 0 && context->sample_rate > 0)
+                dec_len = avcodec_decode_audio4(context, frame, &got_frame, &avp);
+                if (dec_len < 0)
+                {
+                    break;
+                }
+                if (dec_len > 0 && got_frame)
                 {
                     info->rate_base          = 1;
-                    info->rate               = context->sample_rate;
-                    info->samples_per_frame  = frame.nb_samples;
+                    // libavcoded doesn't consistently set frame->sample_rate
+                    if (frame->sample_rate != 0)
+                    {
+                        info->rate = frame->sample_rate;
+                    }
+                    else
+                    {
+                        info->rate = context->sample_rate;
+                        hb_log("decavcodecaBSInfo: warning: invalid frame sample_rate! Using context sample_rate.");
+                    }
+                    info->samples_per_frame  = frame->nb_samples;
 
                     int bps = av_get_bits_per_sample(context->codec_id);
-                    if (bps > 0 && context->channels > 0)
+                    int channels = av_get_channel_layout_nb_channels(frame->channel_layout);
+                    if (bps > 0)
                     {
-                        info->bitrate = (bps *
-                                         context->channels *
-                                         context->sample_rate);
+                        info->bitrate = (bps * channels * info->rate);
                     }
                     else if (context->bit_rate > 0)
                     {
@@ -639,18 +734,50 @@ static int decavcodecaBSInfo( hb_work_object_t *w, const hb_buffer_t *buf,
                     if (truehd_mono)
                     {
                         info->channel_layout = AV_CH_LAYOUT_MONO;
+                        info->matrix_encoding = AV_MATRIX_ENCODING_NONE;
                     }
                     else
                     {
-                        info->channel_layout =
-                            hb_ff_layout_xlat(context->channel_layout,
-                                              context->channels);
+                        AVFrameSideData *side_data;
+                        if ((side_data =
+                             av_frame_get_side_data(frame,
+                                                    AV_FRAME_DATA_MATRIXENCODING)) != NULL)
+                        {
+                            info->matrix_encoding = *side_data->data;
+                        }
+                        else
+                        {
+                            info->matrix_encoding = AV_MATRIX_ENCODING_NONE;
+                        }
+                        if (info->matrix_encoding == AV_MATRIX_ENCODING_DOLBY ||
+                            info->matrix_encoding == AV_MATRIX_ENCODING_DPLII)
+                        {
+                            info->channel_layout = AV_CH_LAYOUT_STEREO_DOWNMIX;
+                        }
+                        else
+                        {
+                            info->channel_layout = frame->channel_layout;
+                        }
+                    }
+                    if (context->codec_id == AV_CODEC_ID_AC3 ||
+                        context->codec_id == AV_CODEC_ID_EAC3)
+                    {
+                        if (context->audio_service_type == AV_AUDIO_SERVICE_TYPE_KARAOKE)
+                        {
+                            info->mode = 7;
+                        }
+                        else
+                        {
+                            info->mode = context->audio_service_type;
+                        }
                     }
 
                     ret = 1;
                     break;
                 }
+                dec_pos += dec_len;
             }
+            parse_pos += parse_len;
         }
         buf = buf->next;
     }
@@ -663,7 +790,7 @@ static int decavcodecaBSInfo( hb_work_object_t *w, const hb_buffer_t *buf,
         av_parser_close( parser );
     hb_avcodec_close( context );
     av_freep( &context->extradata );
-    av_free( context );
+    av_freep( &context );
     return ret;
 }
 
@@ -692,7 +819,7 @@ static uint8_t *copy_plane( uint8_t *dst, uint8_t* src, int dstride, int sstride
 // copy one video frame into an HB buf. If the frame isn't in our color space
 // or at least one of its dimensions is odd, use sws_scale to convert/rescale it.
 // Otherwise just copy the bits.
-static hb_buffer_t *copy_frame( hb_work_private_t *pv, AVFrame *frame )
+static hb_buffer_t *copy_frame( hb_work_private_t *pv )
 {
     AVCodecContext *context = pv->context;
     int w, h;
@@ -724,7 +851,7 @@ static hb_buffer_t *copy_frame( hb_work_private_t *pv, AVFrame *frame )
         {
             pv->dst_frame = malloc( ww * hh * 3 / 2 );
         }
-        if( hb_va_extract( pv->dxva2, pv->dst_frame, frame, pv->job->width, pv->job->height, pv->job->title->crop, pv->opencl_scale, pv->job->use_opencl, pv->job->use_decomb, pv->job->use_detelecine ) == HB_WORK_ERROR )
+        if( hb_va_extract( pv->dxva2, pv->dst_frame, pv->frame, pv->job->width, pv->job->height, pv->job->title->crop, pv->opencl_scale, pv->job->use_opencl, pv->job->use_decomb, pv->job->use_detelecine ) == HB_WORK_ERROR )
         {
             hb_log( "hb_va_Extract failed!!!!!!" );
         }
@@ -752,7 +879,7 @@ static hb_buffer_t *copy_frame( hb_work_private_t *pv, AVFrame *frame )
     if (pv->qsv.decode &&
         pv->qsv.config.io_pattern == MFX_IOPATTERN_OUT_OPAQUE_MEMORY)
     {
-        buf->qsv_details.qsv_atom = frame->data[2];
+        buf->qsv_details.qsv_atom = pv->frame->data[2];
         return buf;
     }
 #endif
@@ -783,7 +910,8 @@ static hb_buffer_t *copy_frame( hb_work_private_t *pv, AVFrame *frame )
                 pv->sws_pix_fmt = context->pix_fmt;
             }
             sws_scale(pv->sws_context,
-                      (const uint8_t* const *)frame->data, frame->linesize,
+                      (const uint8_t* const *)pv->frame->data,
+                      pv->frame->linesize,
                       0, context->height, dstpic.data, dstpic.linesize);
         }
         else
@@ -791,15 +919,15 @@ static hb_buffer_t *copy_frame( hb_work_private_t *pv, AVFrame *frame )
             w = buf->plane[0].stride;
             h = buf->plane[0].height;
             dst = buf->plane[0].data;
-            copy_plane( dst, frame->data[0], w, frame->linesize[0], h );
+            copy_plane( dst, pv->frame->data[0], w, pv->frame->linesize[0], h );
             w = buf->plane[1].stride;
             h = buf->plane[1].height;
             dst = buf->plane[1].data;
-            copy_plane( dst, frame->data[1], w, frame->linesize[1], h );
+            copy_plane( dst, pv->frame->data[1], w, pv->frame->linesize[1], h );
             w = buf->plane[2].stride;
             h = buf->plane[2].height;
             dst = buf->plane[2].data;
-            copy_plane( dst, frame->data[2], w, frame->linesize[2], h );
+            copy_plane( dst, pv->frame->data[2], w, pv->frame->linesize[2], h );
         }
         return buf;
     }
@@ -956,6 +1084,67 @@ static void checkCadence( int * cadence, uint16_t flags, int64_t start )
         hb_log("%fs: Film -> Video", (float)start / 90000);
 }
 
+// send cc_buf to the CC decoder(s)
+static void cc_send_to_decoder(hb_work_private_t *pv, hb_buffer_t *buf)
+{
+    if (buf == NULL)
+        return;
+
+    // if there's more than one decoder for the captions send a copy
+    // of the buffer to all.
+    hb_subtitle_t *subtitle;
+    int ii = 0, n = hb_list_count(pv->list_subtitle);
+    while (--n > 0)
+    {
+        // make a copy of the buf then forward it to the decoder
+        hb_buffer_t *cpy = hb_buffer_dup(buf);
+
+        subtitle = hb_list_item(pv->list_subtitle, ii++);
+        hb_fifo_push(subtitle->fifo_in, cpy);
+    }
+    subtitle = hb_list_item(pv->list_subtitle, ii);
+    hb_fifo_push( subtitle->fifo_in, buf );
+}
+
+static hb_buffer_t * cc_fill_buffer(hb_work_private_t *pv, uint8_t *cc, int size, int64_t pts)
+{
+    int cc_count[4] = {0,};
+    int ii;
+    hb_buffer_t *buf = NULL;
+
+    for (ii = 0; ii < size; ii += 3)
+    {
+        if ((cc[ii] & 0x04) == 0)    // not valid
+            continue;
+        if ((cc[ii+1] & 0x7f) == 0 && (cc[ii+2] & 0x7f) == 0) // stuffing
+            continue;
+        int type = cc[ii] & 0x03;
+        cc_count[type]++;
+    }
+
+    // Only handles CC1 for now.
+    if (cc_count[0] > 0)
+    {
+        buf = hb_buffer_init(cc_count[0] * 2);
+        buf->s.start = pts;
+        int jj = 0;
+        for (ii = 0; ii < size; ii += 3)
+        {
+            if ((cc[ii] & 0x04) == 0)    // not valid
+                continue;
+            if ((cc[ii+1] & 0x7f) == 0 && (cc[ii+2] & 0x7f) == 0) // stuffing
+                continue;
+            int type = cc[ii] & 0x03;
+            if (type == 0)
+            {
+                buf->data[jj++] = cc[ii+1];
+                buf->data[jj++] = cc[ii+2];
+            }
+        }
+    }
+    return buf;
+}
+
 /*
  * Decodes a video frame from the specified raw packet data
  *      ('data', 'size', 'sequence').
@@ -974,7 +1163,6 @@ static int decodeFrame( hb_work_object_t *w, uint8_t *data, int size, int sequen
 {
     hb_work_private_t *pv = w->private_data;
     int got_picture, oldlevel = 0;
-    AVFrame frame = { { 0 } };
     AVPacket avp;
 
     if ( global_verbosity_level <= 1 )
@@ -991,7 +1179,7 @@ static int decodeFrame( hb_work_object_t *w, uint8_t *data, int size, int sequen
     /*
      * libav avcodec_decode_video2() needs AVPacket flagged with AV_PKT_FLAG_KEY
      * for some codecs. For example, sequence of PNG in a mov container.
-     */ 
+     */
     if ( frametype & HB_FRAME_KEY )
     {
         avp.flags |= AV_PKT_FLAG_KEY;
@@ -1011,7 +1199,7 @@ static int decodeFrame( hb_work_object_t *w, uint8_t *data, int size, int sequen
     }
 #endif
 
-    if ( avcodec_decode_video2( pv->context, &frame, &got_picture, &avp ) < 0 )
+    if ( avcodec_decode_video2( pv->context, pv->frame, &got_picture, &avp ) < 0 )
     {
         ++pv->decode_errors;
     }
@@ -1029,29 +1217,13 @@ static int decodeFrame( hb_work_object_t *w, uint8_t *data, int size, int sequen
     if (pv->qsv.decode && got_picture)
     {
         // we got a decoded frame, restore the lowest available PTS
-        frame.pkt_pts = hb_av_pop_next_pts(pv->qsv.pts_list);
+        pv->frame->pkt_pts = hb_av_pop_next_pts(pv->qsv.pts_list);
     }
 #endif
 
     if ( global_verbosity_level <= 1 )
     {
         av_log_set_level( oldlevel );
-    }
-    if( got_picture && pv->wait_for_keyframe > 0 )
-    {
-        // Libav is inconsistant about how it flags keyframes.  For many
-        // codecs it simply sets frame.key_frame.  But for others, it only
-        // sets frame.pict_type. And for yet others neither gets set at all
-        // (qtrle).
-        int key = frame.key_frame || (w->codec_param != AV_CODEC_ID_H264 &&
-                                      (frame.pict_type == 0 ||
-                                       frame.pict_type == AV_PICTURE_TYPE_I));
-        if( !key )
-        {
-            pv->wait_for_keyframe--;
-            return 0;
-        }
-        pv->wait_for_keyframe = 0;
     }
     if( got_picture )
     {
@@ -1075,9 +1247,9 @@ static int decodeFrame( hb_work_object_t *w, uint8_t *data, int size, int sequen
 
         double pts;
         double frame_dur = pv->duration;
-        if ( frame.repeat_pict )
+        if ( pv->frame->repeat_pict )
         {
-            frame_dur += frame.repeat_pict * pv->field_duration;
+            frame_dur += pv->frame->repeat_pict * pv->field_duration;
         }
 #ifdef USE_HWD
         if( pv->dxva2 && pv->dxva2->do_job == HB_WORK_OK )
@@ -1085,40 +1257,97 @@ static int decodeFrame( hb_work_object_t *w, uint8_t *data, int size, int sequen
             if( avp.pts>0 )
             {
                 if( pv->dxva2->input_pts[0] != 0 && pv->dxva2->input_pts[1] == 0 )
-                    frame.pkt_pts = pv->dxva2->input_pts[0];
+                    pv->frame->pkt_pts = pv->dxva2->input_pts[0];
                 else
-                    frame.pkt_pts = pv->dxva2->input_pts[0]<pv->dxva2->input_pts[1] ? pv->dxva2->input_pts[0] : pv->dxva2->input_pts[1];
+                    pv->frame->pkt_pts = pv->dxva2->input_pts[0]<pv->dxva2->input_pts[1] ? pv->dxva2->input_pts[0] : pv->dxva2->input_pts[1];
             }
         }
 #endif
         // If there was no pts for this frame, assume constant frame rate
         // video & estimate the next frame time from the last & duration.
-        if (frame.pkt_pts == AV_NOPTS_VALUE || hb_gui_use_hwd_flag == 1)
+        if (pv->frame->pkt_pts == AV_NOPTS_VALUE || hb_gui_use_hwd_flag == 1)
         {
             pts = pv->pts_next;
         }
         else
         {
-            pts = frame.pkt_pts;
+            pts = pv->frame->pkt_pts;
         }
 
         pv->pts_next = pts + frame_dur;
 
-        if ( frame.top_field_first )
+        if ( pv->frame->top_field_first )
         {
             flags |= PIC_FLAG_TOP_FIELD_FIRST;
         }
-        if ( !frame.interlaced_frame )
+        if ( !pv->frame->interlaced_frame )
         {
             flags |= PIC_FLAG_PROGRESSIVE_FRAME;
         }
-        if ( frame.repeat_pict == 1 )
+        if ( pv->frame->repeat_pict == 1 )
         {
             flags |= PIC_FLAG_REPEAT_FIRST_FIELD;
         }
-        if ( frame.repeat_pict == 2 )
+        if ( pv->frame->repeat_pict == 2 )
         {
             flags |= PIC_FLAG_REPEAT_FRAME;
+        }
+
+        // Check for CC data
+        AVFrameSideData *sd;
+        sd = av_frame_get_side_data(pv->frame, AV_FRAME_DATA_A53_CC);
+        if (sd != NULL)
+        {
+            if (!pv->job && pv->title && sd->size > 0)
+            {
+                hb_subtitle_t *subtitle;
+                int i = 0;
+
+                while ((subtitle = hb_list_item(pv->title->list_subtitle, i++)))
+                {
+                    /*
+                     * Let's call them 608 subs for now even if they aren't,
+                     * since they are the only types we grok.
+                     */
+                    if (subtitle->source == CC608SUB)
+                    {
+                        break;
+                    }
+                }
+                if (subtitle == NULL)
+                {
+                    subtitle = calloc(sizeof( hb_subtitle_t ), 1);
+                    subtitle->track = 0;
+                    subtitle->id = 0;
+                    subtitle->format = TEXTSUB;
+                    subtitle->source = CC608SUB;
+                    subtitle->config.dest = PASSTHRUSUB;
+                    subtitle->codec = WORK_DECCC608;
+                    subtitle->type = 5;
+                    snprintf(subtitle->lang, sizeof( subtitle->lang ),
+                             "Closed Captions");
+                    /*
+                     * The language of the subtitles will be the same as the
+                     * first audio track, i.e. the same as the video.
+                     */
+                    hb_audio_t *audio = hb_list_item(pv->title->list_audio, 0);
+                    if (audio != NULL)
+                    {
+                        snprintf(subtitle->iso639_2, sizeof(subtitle->iso639_2),
+                                 "%s", audio->config.lang.iso639_2);
+                    } else {
+                        snprintf(subtitle->iso639_2, sizeof(subtitle->iso639_2),
+                                 "und");
+                    }
+                    hb_list_add(pv->title->list_subtitle, subtitle);
+                }
+            }
+            if (pv->list_subtitle != NULL && sd->size > 0)
+            {
+                hb_buffer_t *cc_buf;
+                cc_buf = cc_fill_buffer(pv, sd->data, sd->size, pts);
+                cc_send_to_decoder(pv, cc_buf);
+            }
         }
 
         hb_buffer_t *buf;
@@ -1127,7 +1356,8 @@ static int decodeFrame( hb_work_object_t *w, uint8_t *data, int size, int sequen
         // by Microsoft we don't worry about timestamp reordering
         if ( ! pv->job || ! pv->brokenByMicrosoft )
         {
-            buf = copy_frame( pv, &frame );
+            buf = copy_frame( pv );
+            av_frame_unref(pv->frame);
             buf->s.start = pts;
             buf->sequence = sequence;
 
@@ -1194,7 +1424,8 @@ static int decodeFrame( hb_work_object_t *w, uint8_t *data, int size, int sequen
         }
 
         // add the new frame to the delayq & push its timestamp on the heap
-        buf = copy_frame( pv, &frame );
+        buf = copy_frame( pv );
+        av_frame_unref(pv->frame);
         buf->sequence = sequence;
         /* Store picture flags for later use by filters */
         buf->s.flags = flags;
@@ -1261,6 +1492,8 @@ static void decodeVideo( hb_work_object_t *w, uint8_t *data, int size, int seque
         }
 #endif
         flushDelayQueue(pv);
+        if (pv->list_subtitle != NULL)
+            cc_send_to_decoder(pv, hb_buffer_init(0));
     }
 }
 
@@ -1305,20 +1538,25 @@ static int decavcodecvInit( hb_work_object_t * w, hb_job_t * job )
 #ifdef USE_QSV
     if (hb_qsv_decode_is_enabled(job))
     {
-        // setup the QSV configuration
-        pv->qsv.config.io_pattern         = MFX_IOPATTERN_OUT_OPAQUE_MEMORY;
-        pv->qsv.config.impl_requested     = hb_qsv_impl_get_preferred();
-        pv->qsv.config.async_depth        = job->qsv.async_depth;
-        pv->qsv.config.sync_need          =  0;
-        pv->qsv.config.usage_threaded     =  1;
-        pv->qsv.config.additional_buffers = 64; // FIFO_LARGE
-        if (hb_qsv_info->capabilities & HB_QSV_CAP_OPTION2_LOOKAHEAD)
+        // determine which encoder we're using
+        hb_qsv_info_t *info = hb_qsv_info_get(job->vcodec);
+        pv->qsv.decode = info != NULL;
+        if (pv->qsv.decode)
         {
-            // more surfaces may be needed for the lookahead
-            pv->qsv.config.additional_buffers = 160;
+            // setup the QSV configuration
+            pv->qsv.config.io_pattern         = MFX_IOPATTERN_OUT_OPAQUE_MEMORY;
+            pv->qsv.config.impl_requested     = info->implementation;
+            pv->qsv.config.async_depth        = job->qsv.async_depth;
+            pv->qsv.config.sync_need          =  0;
+            pv->qsv.config.usage_threaded     =  1;
+            pv->qsv.config.additional_buffers = 64; // FIFO_LARGE
+            if (info->capabilities & HB_QSV_CAP_RATECONTROL_LA)
+            {
+                // more surfaces may be needed for the lookahead
+                pv->qsv.config.additional_buffers = 160;
+            }
+            pv->qsv.codec_name = hb_qsv_decode_get_codec_name(w->codec_param);
         }
-        pv->qsv.codec_name = hb_qsv_decode_get_codec_name(w->codec_param);
-        pv->qsv.decode     = 1;
     }
     else
     {
@@ -1391,11 +1629,18 @@ static int decavcodecvInit( hb_work_object_t * w, hb_job_t * job )
         }
 #endif
 
-        if ( hb_avcodec_open( pv->context, codec, NULL, pv->threads ) )
+        // Set encoder opts...
+        AVDictionary * av_opts = NULL;
+        av_dict_set( &av_opts, "refcounted_frames", "1", 0 );
+
+        if ( hb_avcodec_open( pv->context, codec, &av_opts, pv->threads ) )
         {
+            av_dict_free( &av_opts );
             hb_log( "decavcodecvInit: avcodec_open failed" );
             return 1;
         }
+        av_dict_free( &av_opts );
+
         pv->video_codec_opened = 1;
         // avi, mkv and possibly mp4 containers can contain the M$ VFW packed
         // b-frames abortion that messes up frame ordering and timestamps.
@@ -1408,10 +1653,35 @@ static int decavcodecvInit( hb_work_object_t * w, hb_job_t * job )
     else
     {
         pv->parser = av_parser_init( w->codec_param );
-        pv->context = avcodec_alloc_context3( codec );
-        pv->context->workaround_bugs = FF_BUG_AUTODETECT;
-        pv->context->err_recognition = AV_EF_CRCCHECK;
-        pv->context->error_concealment = FF_EC_GUESS_MVS|FF_EC_DEBLOCK;
+    }
+
+    pv->frame = av_frame_alloc();
+    if (pv->frame == NULL)
+    {
+        hb_log("decavcodecvInit: av_frame_alloc failed");
+        return 1;
+    }
+
+    /*
+     * If not scanning, then are we supposed to extract Closed Captions
+     * and send them to the decoder?
+     */
+    if (job != NULL && hb_list_count(job->list_subtitle) > 0)
+    {
+        hb_subtitle_t *subtitle;
+        int i = 0;
+
+        while ((subtitle = hb_list_item(job->list_subtitle, i++)) != NULL)
+        {
+            if (subtitle->source == CC608SUB)
+            {
+                if (pv->list_subtitle == NULL)
+                {
+                    pv->list_subtitle = hb_list_init();
+                }
+                hb_list_add(pv->list_subtitle, subtitle);
+            }
+        }
     }
     return 0;
 }
@@ -1520,7 +1790,7 @@ static int decavcodecvWork( hb_work_object_t * w, hb_buffer_t ** buf_in,
     /* if we got an empty buffer signaling end-of-stream send it downstream */
     if ( in->size == 0 )
     {
-        if ( pv->context->codec != NULL )
+        if (pv->context != NULL && pv->context->codec != NULL)
         {
             decodeVideo( w, in->data, in->size, in->sequence, pts, dts, in->s.frametype );
         }
@@ -1552,6 +1822,12 @@ static int decavcodecvWork( hb_work_object_t * w, hb_buffer_t ** buf_in,
             *buf_out = hb_buffer_init( 0 );;
             return HB_WORK_DONE;
         }
+
+        pv->context = avcodec_alloc_context3( codec );
+        pv->context->workaround_bugs = FF_BUG_AUTODETECT;
+        pv->context->err_recognition = AV_EF_CRCCHECK;
+        pv->context->error_concealment = FF_EC_GUESS_MVS|FF_EC_DEBLOCK;
+
         if ( setup_extradata( w, in ) )
         {
             // we didn't find the headers needed to set up extradata.
@@ -1572,13 +1848,18 @@ static int decavcodecvWork( hb_work_object_t * w, hb_buffer_t ** buf_in,
         }
 #endif
 
+        AVDictionary * av_opts = NULL;
+        av_dict_set( &av_opts, "refcounted_frames", "1", 0 );
+
         // disable threaded decoding for scan, can cause crashes
-        if ( hb_avcodec_open( pv->context, codec, NULL, pv->threads ) )
+        if ( hb_avcodec_open( pv->context, codec, &av_opts, pv->threads ) )
         {
+            av_dict_free( &av_opts );
             hb_log( "decavcodecvWork: avcodec_open failed" );
             *buf_out = hb_buffer_init( 0 );;
             return HB_WORK_DONE;
         }
+        av_dict_free( &av_opts );
         pv->video_codec_opened = 1;
     }
 
@@ -1631,7 +1912,10 @@ static void compute_frame_duration( hb_work_private_t *pv )
             duration = ( (double)st->duration * (double)st->time_base.num ) /
                        ( (double)st->nb_frames * (double)st->time_base.den );
         }
-        else
+        // Raw demuxers set a default fps of 25 and do not parse
+        // a value from the container.  So use the codec time_base
+        // for raw demuxers.
+        else if (ic->iformat->raw_codec_id == AV_CODEC_ID_NONE)
         {
             // XXX We don't have a frame count or duration so try to use the
             // far less reliable time base info in the stream.
@@ -1649,12 +1933,6 @@ static void compute_frame_duration( hb_work_private_t *pv )
             {
                 tb = &(st->time_base);
                 duration =  (double)tb->num / (double)tb->den;
-            }
-            else if ( st->r_frame_rate.den * 64L > st->r_frame_rate.num &&
-                      st->r_frame_rate.num > st->r_frame_rate.den * 8L )
-            {
-                tb = &(st->r_frame_rate);
-                duration =  (double)tb->den / (double)tb->num;
             }
         }
         if ( !duration &&
@@ -1708,6 +1986,9 @@ static int decavcodecvInfo( hb_work_object_t *w, hb_work_info_t *info )
     hb_work_private_t *pv = w->private_data;
 
     memset( info, 0, sizeof(*info) );
+
+    if (pv->context == NULL)
+        return 0;
 
     info->bitrate = pv->context->bit_rate;
     // HandBrake's video pipeline uses yuv420 color.  This means all
@@ -1825,7 +2106,7 @@ static void decavcodecvFlush( hb_work_object_t *w )
 {
     hb_work_private_t *pv = w->private_data;
 
-    if ( pv->context->codec )
+    if (pv->context != NULL && pv->context->codec != NULL)
     {
         flushDelayQueue( pv );
         hb_buffer_t *buf = link_buf_list( pv );
@@ -1835,6 +2116,7 @@ static void decavcodecvFlush( hb_work_object_t *w )
             pv->video_codec_opened = 0;
             hb_avcodec_close( pv->context );
             av_freep( &pv->context->extradata );
+            av_freep( &pv->context );
             if ( pv->parser )
             {
                 av_parser_close(pv->parser);
@@ -1868,12 +2150,11 @@ static void decodeAudio(hb_audio_t *audio, hb_work_private_t *pv, uint8_t *data,
     int pos = 0;
 
     // If we are given a pts, use it; but don't lose partial ticks.
-    if (pts != -1 && (int64_t)pv->pts_next != pts)
+    if (pts != AV_NOPTS_VALUE && (int64_t)pv->pts_next != pts)
         pv->pts_next = pts;
     while (pos < size)
     {
         int got_frame;
-        AVFrame frame = { { 0 } };
         AVPacket avp;
 
         av_init_packet(&avp);
@@ -1882,7 +2163,7 @@ static void decodeAudio(hb_audio_t *audio, hb_work_private_t *pv, uint8_t *data,
         avp.pts  = pv->pts_next;
         avp.dts  = AV_NOPTS_VALUE;
 
-        int len = avcodec_decode_audio4(context, &frame, &got_frame, &avp);
+        int len = avcodec_decode_audio4(context, pv->frame, &got_frame, &avp);
         if ((len < 0) || (!got_frame && !(loop_limit--)))
         {
             return;
@@ -1894,26 +2175,21 @@ static void decodeAudio(hb_audio_t *audio, hb_work_private_t *pv, uint8_t *data,
 
         pos += len;
 
-        // set the duration on every frame since the stream format can
-        // change (it shouldn't but there's no way to guarantee it).
-        // duration is a scaling factor to go from #bytes in the decoded
-        // frame to frame time (in 90KHz mpeg ticks). 'channels' converts
-        // total samples to per-channel samples. 'sample_rate' converts
-        // per-channel samples to seconds per sample and the 90000
-        // is mpeg ticks per second.
-        //
-        // Also, sample rate is not available until we have decoded some
-        // audio.
-        if ( pv->context->sample_rate )
-        {
-            pv->duration = 90000. / (double)( pv->context->sample_rate );
-        }
-
         if (got_frame)
         {
             hb_buffer_t *out;
-            double duration = frame.nb_samples * pv->duration;
-            double pts_next = pv->pts_next + duration;
+            int samplerate;
+            // libavcoded doesn't yet consistently set frame->sample_rate
+            if (pv->frame->sample_rate != 0)
+            {
+                samplerate = pv->frame->sample_rate;
+            }
+            else
+            {
+                samplerate = context->sample_rate;
+            }
+            double duration = (90000. * pv->frame->nb_samples /
+                               (double)samplerate);
 
             if (audio->config.out.codec & HB_ACODEC_PASS_FLAG)
             {
@@ -1925,26 +2201,50 @@ static void decodeAudio(hb_audio_t *audio, hb_work_private_t *pv, uint8_t *data,
             }
             else
             {
+                AVFrameSideData *side_data;
+                if ((side_data =
+                     av_frame_get_side_data(pv->frame,
+                                            AV_FRAME_DATA_DOWNMIX_INFO)) != NULL)
+                {
+                    double surround_mix_level, center_mix_level;
+                    AVDownmixInfo *downmix_info = (AVDownmixInfo*)side_data->data;
+                    if (audio->config.out.mixdown == HB_AMIXDOWN_DOLBY ||
+                        audio->config.out.mixdown == HB_AMIXDOWN_DOLBYPLII)
+                    {
+                        surround_mix_level = downmix_info->surround_mix_level_ltrt;
+                        center_mix_level   = downmix_info->center_mix_level_ltrt;
+                    }
+                    else
+                    {
+                        surround_mix_level = downmix_info->surround_mix_level;
+                        center_mix_level   = downmix_info->center_mix_level;
+                    }
+                    hb_audio_resample_set_mix_levels(pv->resample,
+                                                     surround_mix_level,
+                                                     center_mix_level,
+                                                     downmix_info->lfe_mix_level);
+                }
                 hb_audio_resample_set_channel_layout(pv->resample,
-                                                     context->channel_layout,
-                                                     context->channels);
+                                                     pv->frame->channel_layout);
                 hb_audio_resample_set_sample_fmt(pv->resample,
-                                                 context->sample_fmt);
+                                                 pv->frame->format);
                 if (hb_audio_resample_update(pv->resample))
                 {
                     hb_log("decavcodec: hb_audio_resample_update() failed");
+                    av_frame_unref(pv->frame);
                     return;
                 }
-                out = hb_audio_resample(pv->resample, frame.extended_data,
-                                        frame.nb_samples);
+                out = hb_audio_resample(pv->resample, pv->frame->extended_data,
+                                        pv->frame->nb_samples);
             }
+            av_frame_unref(pv->frame);
 
             if (out != NULL)
             {
                 out->s.start    = pv->pts_next;
                 out->s.duration = duration;
-                out->s.stop     = pts_next;
-                pv->pts_next    = pts_next;
+                out->s.stop     = duration + pv->pts_next;
+                pv->pts_next    = duration + pv->pts_next;
                 hb_list_add(pv->list, out);
             }
         }

@@ -261,7 +261,17 @@ namespace HandBrake.ApplicationServices.Services
             }
 
             EncodeJob encodeJob = InteropModelCreator.GetEncodeJob(job);
-            BitmapImage bitmapImage = this.instance.GetPreview(encodeJob, preview);
+
+            BitmapImage bitmapImage = null;
+            try
+            {
+                bitmapImage = this.instance.GetPreview(encodeJob, preview);
+            }
+            catch (AccessViolationException e)
+            {
+                Console.WriteLine(e);
+            }
+           
             return bitmapImage;
         }
 
@@ -460,7 +470,8 @@ namespace HandBrake.ApplicationServices.Services
 
                 foreach (Interop.SourceData.Chapter chapter in title.Chapters)
                 {
-                    converted.Chapters.Add(new Chapter(chapter.ChapterNumber, string.Empty, chapter.Duration));
+                    string chapterName = !string.IsNullOrEmpty(chapter.Name) ? chapter.Name : string.Empty;
+                    converted.Chapters.Add(new Chapter(chapter.ChapterNumber, chapterName, chapter.Duration));
                 }
 
                 foreach (Interop.SourceData.AudioTrack track in title.AudioTracks)
@@ -500,7 +511,7 @@ namespace HandBrake.ApplicationServices.Services
                             break;
                     }
 
-                    converted.Subtitles.Add(new Subtitle(track.TrackNumber, track.Language, track.LanguageCode, convertedType));
+                    converted.Subtitles.Add(new Subtitle(track.SubtitleSourceInt, track.TrackNumber, track.Language, track.LanguageCode, convertedType, track.CanBurn, track.CanSetForcedOnly));
                 }
 
                 titleList.Add(converted);

@@ -1,6 +1,6 @@
 /* ports.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -58,6 +58,7 @@
 
 #include <time.h>
 #include <sys/time.h>
+#include <ctype.h>
 
 #if defined( SYS_LINUX )
 #include <linux/cdrom.h>
@@ -222,7 +223,11 @@ struct
 {
     enum hb_cpu_platform platform;
     const char *name;
-    char buf[48];
+    union
+    {
+        char buf[48];
+        uint32_t buf4[12];
+    };
     int count;
 } hb_cpu_info;
 
@@ -247,10 +252,14 @@ const char* hb_get_cpu_platform_name()
     {
         // Intel 64 and IA-32 Architectures Software Developer's Manual, Vol. 3C
         // Table 35-1: CPUID Signature Values of DisplayFamily_DisplayModel
+        case HB_CPU_PLATFORM_INTEL_BNL:
+            return "Intel microarchitecture Bonnell";
         case HB_CPU_PLATFORM_INTEL_SNB:
             return "Intel microarchitecture Sandy Bridge";
         case HB_CPU_PLATFORM_INTEL_IVB:
             return "Intel microarchitecture Ivy Bridge";
+        case HB_CPU_PLATFORM_INTEL_SLM:
+            return "Intel microarchitecture Silvermont";
         case HB_CPU_PLATFORM_INTEL_HSW:
             return "Intel microarchitecture Haswell";
 
@@ -258,6 +267,24 @@ const char* hb_get_cpu_platform_name()
             return NULL;
     }
 }
+
+#if ARCH_X86_64
+#    define REG_b "rbx"
+#    define REG_S "rsi"
+#elif ARCH_X86_32
+#    define REG_b "ebx"
+#    define REG_S "esi"
+#endif // ARCH_X86_32
+
+#if ARCH_X86_64 || ARCH_X86_32
+#define cpuid(index, eax, ebx, ecx, edx)                        \
+    __asm__ volatile (                                          \
+        "mov    %%"REG_b", %%"REG_S" \n\t"                      \
+        "cpuid                       \n\t"                      \
+        "xchg   %%"REG_b", %%"REG_S                             \
+        : "=a" (*eax), "=S" (*ebx), "=c" (*ecx), "=d" (*edx)    \
+        : "0" (index))
+#endif // ARCH_X86_64 || ARCH_X86_32
 
 static void init_cpu_info()
 {
@@ -267,9 +294,10 @@ static void init_cpu_info()
 
     if (av_get_cpu_flags() & AV_CPU_FLAG_SSE)
     {
+#if ARCH_X86_64 || ARCH_X86_32
         int eax, ebx, ecx, edx, family, model;
 
-        ff_cpu_cpuid(1, &eax, &ebx, &ecx, &edx);
+        cpuid(1, &eax, &ebx, &ecx, &edx);
         family = ((eax >> 8) & 0xf) + ((eax >> 20) & 0xff);
         model  = ((eax >> 4) & 0xf) + ((eax >> 12) & 0xf0);
 
@@ -281,6 +309,13 @@ static void init_cpu_info()
             {
                 switch (model)
                 {
+                    case 0x1C:
+                    case 0x26:
+                    case 0x27:
+                    case 0x35:
+                    case 0x36:
+                        hb_cpu_info.platform = HB_CPU_PLATFORM_INTEL_BNL;
+                        break;
                     case 0x2A:
                     case 0x2D:
                         hb_cpu_info.platform = HB_CPU_PLATFORM_INTEL_SNB;
@@ -288,6 +323,11 @@ static void init_cpu_info()
                     case 0x3A:
                     case 0x3E:
                         hb_cpu_info.platform = HB_CPU_PLATFORM_INTEL_IVB;
+                        break;
+                    case 0x37:
+                    case 0x4A:
+                    case 0x4D:
+                        hb_cpu_info.platform = HB_CPU_PLATFORM_INTEL_SLM;
                         break;
                     case 0x3C:
                     case 0x45:
@@ -306,24 +346,24 @@ static void init_cpu_info()
         // Intel 64 and IA-32 Architectures Software Developer's Manual, Vol. 2A
         // Figure 3-8: Determination of Support for the Processor Brand String
         // Table 3-17: Information Returned by CPUID Instruction
-        ff_cpu_cpuid(0x80000000, &eax, &ebx, &ecx, &edx);
+        cpuid(0x80000000, &eax, &ebx, &ecx, &edx);
         if ((eax & 0x80000004) < 0x80000004)
         {
-            ff_cpu_cpuid(0x80000002,
-                         (int*)&hb_cpu_info.buf[ 0],
-                         (int*)&hb_cpu_info.buf[ 4],
-                         (int*)&hb_cpu_info.buf[ 8],
-                         (int*)&hb_cpu_info.buf[12]);
-            ff_cpu_cpuid(0x80000003,
-                         (int*)&hb_cpu_info.buf[16],
-                         (int*)&hb_cpu_info.buf[20],
-                         (int*)&hb_cpu_info.buf[24],
-                         (int*)&hb_cpu_info.buf[28]);
-            ff_cpu_cpuid(0x80000004,
-                         (int*)&hb_cpu_info.buf[32],
-                         (int*)&hb_cpu_info.buf[36],
-                         (int*)&hb_cpu_info.buf[40],
-                         (int*)&hb_cpu_info.buf[44]);
+            cpuid(0x80000002,
+                  &hb_cpu_info.buf4[ 0],
+                  &hb_cpu_info.buf4[ 1],
+                  &hb_cpu_info.buf4[ 2],
+                  &hb_cpu_info.buf4[ 3]);
+            cpuid(0x80000003,
+                  &hb_cpu_info.buf4[ 4],
+                  &hb_cpu_info.buf4[ 5],
+                  &hb_cpu_info.buf4[ 6],
+                  &hb_cpu_info.buf4[ 7]);
+            cpuid(0x80000004,
+                  &hb_cpu_info.buf4[ 8],
+                  &hb_cpu_info.buf4[ 9],
+                  &hb_cpu_info.buf4[10],
+                  &hb_cpu_info.buf4[11]);
 
             hb_cpu_info.name    = hb_cpu_info.buf;
             hb_cpu_info.buf[47] = '\0'; // just in case
@@ -334,6 +374,7 @@ static void init_cpu_info()
                 hb_cpu_info.name++;
             }
         }
+#endif // ARCH_X86_64 || ARCH_X86_32
     }
 }
 
@@ -582,6 +623,27 @@ struct dirent * hb_readdir(HB_DIR *dir)
     return &dir->entry;
 #else
     return readdir(dir);
+#endif
+}
+
+void hb_rewinddir(HB_DIR *dir)
+{
+#ifdef SYS_MINGW
+    _wrewinddir(dir->wdir);
+#else
+    return rewinddir(dir);
+#endif
+}
+
+char * hb_strr_dir_sep(const char *path)
+{
+#ifdef SYS_MINGW
+    char *sep = strrchr(path, '/');
+    if (sep == NULL)
+        sep = strrchr(path, '\\');
+    return sep;
+#else
+    return strrchr(path, '/');
 #endif
 }
 

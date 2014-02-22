@@ -2,19 +2,19 @@
 /*
  * main.c
  * Copyright (C) John Stebbins 2008-2013 <stebbins@stebbins>
- * 
+ *
  * main.c is free software.
- * 
+ *
  * You may redistribute it and/or modify it under the terms of the
  * GNU General Public License, as published by the Free Software
  * Foundation; either version 2 of the License, or (at your option)
  * any later version.
- * 
+ *
  * main.c is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with main.c.  If not, write to:
  *  The Free Software Foundation, Inc.,
@@ -63,6 +63,8 @@
 #include "icons.h"
 #include "callbacks.h"
 #include "queuehandler.h"
+#include "audiohandler.h"
+#include "subtitlehandler.h"
 #include "x264handler.h"
 #include "settings.h"
 #include "resources.h"
@@ -106,13 +108,13 @@ create_builder_or_die(const gchar * name)
     ghb_ui = g_value_get_string(gval);
     if (xml != NULL)
         res = gtk_builder_add_from_string(xml, ghb_ui, -1, &error);
-    if (!xml || !res) 
+    if (!xml || !res)
     {
         GtkWidget *dialog = gtk_message_dialog_new_with_markup(NULL,
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
-            _(markup),
+            gettext(markup),
             name, error->message);
         gtk_dialog_run(GTK_DIALOG(dialog));
         gtk_widget_destroy(dialog);
@@ -156,16 +158,16 @@ MyConnect(
     g_debug("handler_name %s", handler_name);
     g_debug("signal_name %s", signal_name);
     callback = self_symbol_lookup(handler_name);
-    if (!callback) 
+    if (!callback)
     {
         g_message("Signal handler (%s) not found", handler_name);
         return;
     }
-    if (connect_object) 
+    if (connect_object)
     {
         g_signal_connect_object(object, signal_name, callback, connect_object, flags);
     }
-    else 
+    else
     {
         if (flags & G_CONNECT_AFTER)
         {
@@ -216,7 +218,7 @@ bind_chapter_tree_model(signal_user_data_t *ud)
 
     g_debug("bind_chapter_tree_model()\n");
     treeview = GTK_TREE_VIEW(GHB_WIDGET(ud->builder, "chapters_list"));
-    treestore = gtk_list_store_new(4, G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN);
+    treestore = gtk_list_store_new(5, G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN);
     gtk_tree_view_set_model(treeview, GTK_TREE_MODEL(treestore));
 
     cell = ghb_cell_renderer_text_new();
@@ -226,12 +228,17 @@ bind_chapter_tree_model(signal_user_data_t *ud)
 
     cell = ghb_cell_renderer_text_new();
     column = gtk_tree_view_column_new_with_attributes(
-                                    _("Duration"), cell, "text", 1, NULL);
+                                    _("Start"), cell, "text", 1, NULL);
     gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
 
     cell = ghb_cell_renderer_text_new();
     column = gtk_tree_view_column_new_with_attributes(
-                    _("Title"), cell, "text", 2, "editable", 3, NULL);
+                                    _("Duration"), cell, "text", 2, NULL);
+    gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
+
+    cell = ghb_cell_renderer_text_new();
+    column = gtk_tree_view_column_new_with_attributes(
+                    _("Title"), cell, "text", 3, "editable", 4, NULL);
     gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
 
     g_signal_connect(cell, "key-press-event", chapter_keypress_cb, ud);
@@ -269,7 +276,6 @@ bind_queue_tree_model(signal_user_data_t *ud)
     column = gtk_tree_view_column_new();
     gtk_tree_view_column_set_title(column, _("Job Information"));
     cell = gtk_cell_renderer_pixbuf_new();
-    g_object_set(cell, "yalign", 0.0, NULL);
     gtk_tree_view_column_pack_start(column, cell, FALSE);
     gtk_tree_view_column_add_attribute(column, cell, "icon-name", 0);
     textcell = gtk_cell_renderer_text_new();
@@ -280,183 +286,149 @@ bind_queue_tree_model(signal_user_data_t *ud)
     gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
     gtk_tree_view_column_set_expand(column, TRUE);
     gtk_tree_view_column_set_max_width(column, 550);
+    g_signal_connect(treeview, "size-allocate", queue_list_size_allocate_cb,
+                        textcell);
 
     cell = custom_cell_renderer_button_new();
-    g_object_set(cell, "yalign", 0.0, NULL);
     column = gtk_tree_view_column_new_with_attributes(
                                     _(""), cell, "icon-name", 2, NULL);
     gtk_tree_view_column_set_min_width(column, 24);
     gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
 
-    gtk_tree_view_enable_model_drag_dest(treeview, &SrcEntry, 1, 
+    gtk_tree_view_enable_model_drag_dest(treeview, &SrcEntry, 1,
                                             GDK_ACTION_MOVE);
-    gtk_tree_view_enable_model_drag_source(treeview, GDK_BUTTON1_MASK, 
+    gtk_tree_view_enable_model_drag_source(treeview, GDK_BUTTON1_MASK,
                                             &SrcEntry, 1, GDK_ACTION_MOVE);
 
     g_signal_connect(selection, "changed", queue_list_selection_changed_cb, ud);
     g_signal_connect(cell, "clicked", queue_remove_clicked_cb, ud);
-    g_signal_connect(treeview, "size-allocate", queue_list_size_allocate_cb, 
-                        textcell);
     g_signal_connect(treeview, "drag_data_received", queue_drag_cb, ud);
     g_signal_connect(treeview, "drag_motion", queue_drag_motion_cb, ud);
 }
 
 extern G_MODULE_EXPORT void audio_list_selection_changed_cb(void);
+extern G_MODULE_EXPORT void audio_edit_clicked_cb(void);
+extern G_MODULE_EXPORT void audio_remove_clicked_cb(void);
 
 // Create and bind the tree model to the tree view for the audio track list
 // Also, connect up the signal that lets us know the selection has changed
 static void
 bind_audio_tree_model(signal_user_data_t *ud)
 {
-    GtkCellRenderer *cell;
+    GtkCellRenderer *source_cell;
+    GtkCellRenderer *arrow_cell;
+    GtkCellRenderer *output_cell;
+    GtkCellRenderer *edit_cell;
+    GtkCellRenderer *delete_cell;
     GtkTreeViewColumn *column;
-    GtkListStore *treestore;
+    GtkTreeStore *treestore;
     GtkTreeView  *treeview;
     GtkTreeSelection *selection;
-    GtkWidget *widget;
 
     g_debug("bind_audio_tree_model()\n");
     treeview = GTK_TREE_VIEW(GHB_WIDGET(ud->builder, "audio_list"));
     selection = gtk_tree_view_get_selection(treeview);
-    // 12 columns in model.  6 are visible, the other 6 are for storing
-    // values that I need
-    treestore = gtk_list_store_new(7, G_TYPE_STRING, G_TYPE_STRING, 
-                                   G_TYPE_STRING, G_TYPE_STRING, 
-                                   G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+    treestore = gtk_tree_store_new(6, G_TYPE_STRING, G_TYPE_STRING,
+                                      G_TYPE_STRING, G_TYPE_STRING,
+                                      G_TYPE_STRING, G_TYPE_FLOAT);
     gtk_tree_view_set_model(treeview, GTK_TREE_MODEL(treestore));
 
-    cell = gtk_cell_renderer_text_new();
-    column = gtk_tree_view_column_new_with_attributes(
-                                    _("Track"), cell, "text", 0, NULL);
-    gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
-    gtk_tree_view_column_set_min_width(column, 200);
-    gtk_tree_view_column_set_max_width(column, 200);
+    source_cell = gtk_cell_renderer_text_new();
+    arrow_cell = gtk_cell_renderer_text_new();
+    output_cell = gtk_cell_renderer_text_new();
+    edit_cell = custom_cell_renderer_button_new();
+    delete_cell = custom_cell_renderer_button_new();
 
-    cell = gtk_cell_renderer_text_new();
-    column = gtk_tree_view_column_new_with_attributes(
-                                    _("Codec"), cell, "text", 1, NULL);
+    column = gtk_tree_view_column_new();
+    gtk_tree_view_column_set_spacing(column, 12);
+    gtk_tree_view_column_set_title(column, _("Track Information"));
+    gtk_tree_view_column_pack_start(column, source_cell, FALSE);
+    gtk_tree_view_column_add_attribute(column, source_cell, "text", 0);
+    gtk_tree_view_column_add_attribute(column, source_cell, "yalign", 5);
+    gtk_tree_view_column_pack_start(column, arrow_cell, FALSE);
+    gtk_tree_view_column_add_attribute(column, arrow_cell, "text", 1);
+    gtk_tree_view_column_pack_start(column, output_cell, TRUE);
+    gtk_tree_view_column_add_attribute(column, output_cell, "markup", 2);
+    gtk_tree_view_column_add_attribute(column, output_cell, "yalign", 5);
     gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
-    gtk_tree_view_column_set_min_width(column, 110);
+    gtk_tree_view_column_set_expand(column, TRUE);
 
-    cell = gtk_cell_renderer_text_new();
     column = gtk_tree_view_column_new_with_attributes(
-                                    _("Bitrate"), cell, "text", 2, NULL);
-    gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
-    gtk_tree_view_column_set_min_width(column, 50);
-
-    cell = gtk_cell_renderer_text_new();
-    column = gtk_tree_view_column_new_with_attributes(
-                                    _("Sample Rate"), cell, "text", 3, NULL);
-    gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
-    gtk_tree_view_column_set_min_width(column, 100);
-
-    cell = gtk_cell_renderer_text_new();
-    column = gtk_tree_view_column_new_with_attributes(
-                                    _("Mix"), cell, "text", 4, NULL);
-    gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
-    gtk_tree_view_column_set_min_width(column, 115);
-
-    cell = gtk_cell_renderer_text_new();
-    column = gtk_tree_view_column_new_with_attributes(
-                                    _("Gain"), cell, "text", 5, NULL);
+                                    _(""), edit_cell, "icon-name", 3, NULL);
+    //gtk_tree_view_column_set_min_width(column, 24);
     gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
 
-    cell = gtk_cell_renderer_text_new();
     column = gtk_tree_view_column_new_with_attributes(
-                                    _("DRC"), cell, "text", 6, NULL);
+                                    _(""), delete_cell, "icon-name", 4, NULL);
+    //gtk_tree_view_column_set_min_width(column, 24);
     gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
 
     g_signal_connect(selection, "changed", audio_list_selection_changed_cb, ud);
-    // Need to disable remove and update buttons since there are initially
-    // no selections
-    widget = GHB_WIDGET(ud->builder, "audio_remove");
-    gtk_widget_set_sensitive(widget, FALSE);
+    g_signal_connect(edit_cell, "clicked", audio_edit_clicked_cb, ud);
+    g_signal_connect(delete_cell, "clicked", audio_remove_clicked_cb, ud);
+
     g_debug("Done\n");
 }
 
 extern G_MODULE_EXPORT void subtitle_list_selection_changed_cb(void);
-extern G_MODULE_EXPORT void subtitle_forced_toggled_cb(void);
-extern G_MODULE_EXPORT void subtitle_burned_toggled_cb(void);
-extern G_MODULE_EXPORT void subtitle_default_toggled_cb(void);
+extern G_MODULE_EXPORT void subtitle_edit_clicked_cb(void);
+extern G_MODULE_EXPORT void subtitle_remove_clicked_cb(void);
 
 // Create and bind the tree model to the tree view for the subtitle track list
 // Also, connect up the signal that lets us know the selection has changed
 static void
 bind_subtitle_tree_model(signal_user_data_t *ud)
 {
-    GtkCellRenderer *cell;
+    GtkCellRenderer *source_cell;
+    GtkCellRenderer *arrow_cell;
+    GtkCellRenderer *output_cell;
+    GtkCellRenderer *edit_cell;
+    GtkCellRenderer *delete_cell;
     GtkTreeViewColumn *column;
-    GtkListStore *treestore;
+    GtkTreeStore *treestore;
     GtkTreeView  *treeview;
     GtkTreeSelection *selection;
-    GtkWidget *widget;
 
     g_debug("bind_subtitle_tree_model()\n");
     treeview = GTK_TREE_VIEW(GHB_WIDGET(ud->builder, "subtitle_list"));
     selection = gtk_tree_view_get_selection(treeview);
-    // 6 columns in model.  5 are visible, the other 1 is for storing
-    // values that I need
-    // Track, force, burn, default, type, srt offset, track short, source
-    // force visible, burn visible, offset visible
-    treestore = gtk_list_store_new(10, 
-                                    G_TYPE_STRING,
-                                    G_TYPE_BOOLEAN, G_TYPE_BOOLEAN,
-                                    G_TYPE_BOOLEAN,
-                                    G_TYPE_INT,     G_TYPE_STRING,
-                                    G_TYPE_INT,
-                                    G_TYPE_BOOLEAN, G_TYPE_BOOLEAN,
-                                    G_TYPE_BOOLEAN);
+    treestore = gtk_tree_store_new(6, G_TYPE_STRING, G_TYPE_STRING,
+                                      G_TYPE_STRING, G_TYPE_STRING,
+                                      G_TYPE_STRING, G_TYPE_FLOAT);
     gtk_tree_view_set_model(treeview, GTK_TREE_MODEL(treestore));
 
-    cell = gtk_cell_renderer_text_new();
-    column = gtk_tree_view_column_new_with_attributes(
-                                    _("Track"), cell, "text", 0, NULL);
-    widget = GHB_WIDGET(ud->builder, "SubTrackLabel");
-    gtk_tree_view_column_set_widget(column, widget);
-    gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
-    gtk_tree_view_column_set_min_width(column, 350);
-    gtk_tree_view_column_set_max_width(column, 350);
+    source_cell = gtk_cell_renderer_text_new();
+    arrow_cell = gtk_cell_renderer_text_new();
+    output_cell = gtk_cell_renderer_text_new();
+    edit_cell = custom_cell_renderer_button_new();
+    delete_cell = custom_cell_renderer_button_new();
 
-    cell = gtk_cell_renderer_toggle_new();
-    column = gtk_tree_view_column_new_with_attributes(
-            _("Forced Only"), cell, "active", 1, "visible", 7, NULL);
-    widget = GHB_WIDGET(ud->builder, "SubForcedLabel");
-    gtk_tree_view_column_set_widget(column, widget);
+    column = gtk_tree_view_column_new();
+    gtk_tree_view_column_set_spacing(column, 12);
+    gtk_tree_view_column_set_title(column, _("Track Information"));
+    gtk_tree_view_column_pack_start(column, source_cell, FALSE);
+    gtk_tree_view_column_add_attribute(column, source_cell, "text", 0);
+    gtk_tree_view_column_add_attribute(column, source_cell, "yalign", 5);
+    gtk_tree_view_column_pack_start(column, arrow_cell, FALSE);
+    gtk_tree_view_column_add_attribute(column, arrow_cell, "text", 1);
+    gtk_tree_view_column_pack_start(column, output_cell, TRUE);
+    gtk_tree_view_column_add_attribute(column, output_cell, "markup", 2);
+    gtk_tree_view_column_add_attribute(column, output_cell, "yalign", 5);
     gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
-    g_signal_connect(cell, "toggled", subtitle_forced_toggled_cb, ud);
+    gtk_tree_view_column_set_expand(column, TRUE);
+    gtk_tree_view_column_set_max_width(column, 400);
 
-    cell = gtk_cell_renderer_toggle_new();
-    gtk_cell_renderer_toggle_set_radio(GTK_CELL_RENDERER_TOGGLE(cell), TRUE);
     column = gtk_tree_view_column_new_with_attributes(
-            _("Burned In"), cell, "active", 2, "visible", 8, NULL);
-    widget = GHB_WIDGET(ud->builder, "SubBurnedLabel");
-    gtk_tree_view_column_set_widget(column, widget);
-    gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
-    g_signal_connect(cell, "toggled", subtitle_burned_toggled_cb, ud);
-
-    cell = gtk_cell_renderer_toggle_new();
-    gtk_cell_renderer_toggle_set_radio(GTK_CELL_RENDERER_TOGGLE(cell), TRUE);
-    column = gtk_tree_view_column_new_with_attributes(
-                _("Default"), cell, "active", 3, NULL);
-    widget = GHB_WIDGET(ud->builder, "SubDefaultLabel");
-    gtk_tree_view_column_set_widget(column, widget);
-    gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
-    g_signal_connect(cell, "toggled", subtitle_default_toggled_cb, ud);
-
-    cell = gtk_cell_renderer_text_new();
-    column = gtk_tree_view_column_new_with_attributes(
-            _("Srt Offset"), cell, "text", 4, "visible", 9, NULL);
-    widget = GHB_WIDGET(ud->builder, "SubSRTOffsetLabel");
-    gtk_tree_view_column_set_widget(column, widget);
+                                    _(""), edit_cell, "icon-name", 3, NULL);
     gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
 
+    column = gtk_tree_view_column_new_with_attributes(
+                                    _(""), delete_cell, "icon-name", 4, NULL);
+    gtk_tree_view_append_column(treeview, GTK_TREE_VIEW_COLUMN(column));
 
     g_signal_connect(selection, "changed", subtitle_list_selection_changed_cb, ud);
-    // Need to disable remove and update buttons since there are initially
-    // no selections
-    widget = GHB_WIDGET(ud->builder, "subtitle_remove");
-    gtk_widget_set_sensitive(widget, FALSE);
-    g_debug("Done\n");
+    g_signal_connect(edit_cell, "clicked", subtitle_edit_clicked_cb, ud);
+    g_signal_connect(delete_cell, "clicked", subtitle_remove_clicked_cb, ud);
 }
 
 extern G_MODULE_EXPORT void presets_list_selection_changed_cb(void);
@@ -483,13 +455,13 @@ bind_presets_tree_model(signal_user_data_t *ud)
     g_debug("bind_presets_tree_model()\n");
     treeview = GTK_TREE_VIEW(GHB_WIDGET(ud->builder, "presets_list"));
     selection = gtk_tree_view_get_selection(treeview);
-    treestore = gtk_tree_store_new(6, G_TYPE_STRING, G_TYPE_INT, G_TYPE_INT, 
+    treestore = gtk_tree_store_new(6, G_TYPE_STRING, G_TYPE_INT, G_TYPE_INT,
                                   G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN);
     gtk_tree_view_set_model(treeview, GTK_TREE_MODEL(treestore));
 
     cell = gtk_cell_renderer_text_new();
-    column = gtk_tree_view_column_new_with_attributes(_("Preset Name"), cell, 
-        "text", 0, "weight", 1, "style", 2, 
+    column = gtk_tree_view_column_new_with_attributes(_("Preset Name"), cell,
+        "text", 0, "weight", 1, "style", 2,
         "foreground", 3, "editable", 5, NULL);
 
     g_signal_connect(cell, "edited", preset_edited_cb, ud);
@@ -498,9 +470,9 @@ bind_presets_tree_model(signal_user_data_t *ud)
     gtk_tree_view_column_set_expand(column, TRUE);
     gtk_tree_view_set_tooltip_column(treeview, 4);
 
-    gtk_tree_view_enable_model_drag_dest(treeview, &SrcEntry, 1, 
+    gtk_tree_view_enable_model_drag_dest(treeview, &SrcEntry, 1,
                                             GDK_ACTION_MOVE);
-    gtk_tree_view_enable_model_drag_source(treeview, GDK_BUTTON1_MASK, 
+    gtk_tree_view_enable_model_drag_source(treeview, GDK_BUTTON1_MASK,
                                             &SrcEntry, 1, GDK_ACTION_MOVE);
 
     g_signal_connect(treeview, "drag_data_received", presets_drag_cb, ud);
@@ -678,7 +650,7 @@ static gchar *dvd_device = NULL;
 static gchar *arg_preset = NULL;
 static gboolean ghb_debug = FALSE;
 
-static GOptionEntry entries[] = 
+static GOptionEntry entries[] =
 {
     { "device", 'd', 0, G_OPTION_ARG_FILENAME, &dvd_device, N_("The device or file to encode"), NULL },
     { "preset", 'p', 0, G_OPTION_ARG_STRING, &arg_preset, N_("The preset values to use for encoding"), NULL },
@@ -729,11 +701,18 @@ G_MODULE_EXPORT void preview_hud_size_alloc_cb(GtkWidget *widget, signal_user_da
 #if GTK_CHECK_VERSION(3, 0, 0)
 const gchar *MyCSS =
 "                                   \n\
+GtkRadioButton .button {                       \n\
+    border-width: 0px;                   \n\
+    padding: 0px;                   \n\
+}                                   \n\
 GtkComboBox {                       \n\
-    padding: 1px;                   \n\
+    padding: 0px;                   \n\
+}                                   \n\
+GtkComboBox .button {                       \n\
+    padding: 2px;                   \n\
 }                                   \n\
 GtkEntry {                          \n\
-    padding: 4px;                   \n\
+    padding: 0px 4px;                   \n\
 }                                   \n\
                                     \n\
 @define-color black  #000000;       \n\
@@ -867,7 +846,7 @@ main(int argc, char *argv[])
     {
         dvd_device = argv[1];
     }
-    
+
     gtk_init(&argc, &argv);
 
 #if GTK_CHECK_VERSION(3, 0, 0)
@@ -889,8 +868,6 @@ main(int argc, char *argv[])
     gtk_rc_parse_string(hud_rcstyle);
 #endif
 
-    g_type_class_unref(g_type_class_ref(GTK_TYPE_BUTTON));
-    g_object_set(gtk_settings_get_default(), "gtk-button-images", TRUE, NULL);
 #if !defined(_WIN32)
     notify_init("HandBrake");
 #endif
@@ -909,7 +886,13 @@ main(int argc, char *argv[])
     g_log_set_handler(NULL, G_LOG_LEVEL_DEBUG, debug_log_handler, ud);
     g_log_set_handler("Gtk", G_LOG_LEVEL_WARNING, warn_log_handler, ud);
     //g_log_set_handler("Gtk", G_LOG_LEVEL_CRITICAL, warn_log_handler, ud);
+
+    ud->globals = ghb_settings_new();
+    ud->prefs = ghb_settings_new();
+    ud->settings_array = ghb_array_value_new(1);
     ud->settings = ghb_settings_new();
+    ghb_array_append(ud->settings_array, ud->settings);
+
     ud->builder = create_builder_or_die(BUILDER_NAME);
     // Enable events that alert us to media change events
     watch_volumes(ud);
@@ -1023,28 +1006,46 @@ main(int argc, char *argv[])
     while (x264_presets && x264_presets[count]) count++;
     gtk_range_set_range(GTK_RANGE(presetSlider), 0, count-1);
 
-    // Load all internal settings
-    ghb_settings_init(ud);
+    ghb_init_audio_defaults_ui(ud);
+    ghb_init_subtitle_defaults_ui(ud);
+
+    // Load prefs before presets.  Some preset defaults may depend
+    // on preference settings.
+    // First load default values
+    ghb_settings_init(ud->prefs, "Preferences");
+    ghb_settings_init(ud->globals, "Globals");
+    ghb_settings_init(ud->settings, "Initialization");
+    // Load user preferences file
+    ghb_prefs_load(ud);
+    // Store user preferences into ud->prefs
+    ghb_prefs_to_settings(ud->prefs);
+
+    // Load all settings with default preset values
+    ghb_settings_init(ud->settings, "Presets");
     // Load the presets files
     ghb_presets_load(ud);
-    ghb_prefs_load(ud);
+    // Note that ghb_preset_to_settings(ud->settings) is called when
+    // the default preset is selected.
 
-    ghb_prefs_to_ui(ud);
+    ghb_settings_to_ui(ud, ud->globals);
+    ghb_settings_to_ui(ud, ud->prefs);
+    // Note that ghb_settings_to_ui(ud->settings) happens when initial
+    // empty title is initialized.
 
     gint logLevel;
-    logLevel = ghb_settings_get_int(ud->settings, "LoggingLevel");
+    logLevel = ghb_settings_get_int(ud->prefs, "LoggingLevel");
     ghb_backend_init(logLevel);
 
-    if (ghb_settings_get_boolean(ud->settings, "hbfd"))
+    if (ghb_settings_get_boolean(ud->prefs, "hbfd"))
     {
         ghb_hbfd(ud, TRUE);
     }
-    gchar *source = ghb_settings_get_string(ud->settings, "default_source");
+    gchar *source = ghb_settings_get_string(ud->prefs, "default_source");
     ghb_dvd_set_current(source, ud);
     g_free(source);
 
     // Parsing x264 options "" initializes x264 widgets to proper defaults
-    ghb_x264_parse_options(ud, "");
+    ghb_x264_init(ud);
 
     // Populate the presets tree view
     ghb_presets_list_init(ud, NULL, 0);
@@ -1069,8 +1070,13 @@ main(int argc, char *argv[])
     if (dvd_device != NULL)
     {
         // Source overridden from command line option
-        ghb_settings_set_string(ud->settings, "scan_source", dvd_device);
+        ghb_settings_set_string(ud->globals, "scan_source", dvd_device);
         g_idle_add((GSourceFunc)ghb_idle_scan, ud);
+    }
+    else
+    {
+        GValue *gval = ghb_settings_get_value(ud->prefs, "default_source");
+        ghb_settings_set_value(ud->globals, "scan_source", gval);
     }
     // Reload and check status of the last saved queue
     g_idle_add((GSourceFunc)ghb_reload_queue, ud);
@@ -1083,13 +1089,11 @@ main(int argc, char *argv[])
     GHB_THREAD_NEW("Cache Volume Names", (GThreadFunc)ghb_cache_volnames, ud);
 
 #if defined(_USE_APP_IND)
-    GtkUIManager * uim = GTK_UI_MANAGER(GHB_OBJECT(ud->builder, "uimanager1"));
-
-    GtkMenu *ai_menu = GTK_MENU(gtk_ui_manager_get_widget(uim, "/ui/tray_menu"));
+    GtkMenu *ai_menu = GTK_MENU(GHB_OBJECT(ud->builder, "tray_menu"));
     ud->ai = app_indicator_new("HandBrake", "hb-icon", APP_INDICATOR_CATEGORY_APPLICATION_STATUS);
     app_indicator_set_menu( ud->ai, ai_menu );
     app_indicator_set_label( ud->ai, "", "99.99%");
-    if (ghb_settings_get_boolean(ud->settings, "show_status"))
+    if (ghb_settings_get_boolean(ud->prefs, "show_status"))
     {
         app_indicator_set_status( ud->ai, APP_INDICATOR_STATUS_ACTIVE );
     }
@@ -1106,11 +1110,11 @@ main(int argc, char *argv[])
     si = GTK_STATUS_ICON(GHB_OBJECT(ud->builder, "hb_status"));
 
     gtk_status_icon_set_visible(si,
-            ghb_settings_get_boolean(ud->settings, "show_status"));
+            ghb_settings_get_boolean(ud->prefs, "show_status"));
 
 #if GTK_CHECK_VERSION(2, 16, 0)
     gtk_status_icon_set_has_tooltip(si, TRUE);
-    g_signal_connect(si, "query-tooltip", 
+    g_signal_connect(si, "query-tooltip",
                     status_icon_query_tooltip_cb, ud);
 #else
     gtk_status_icon_set_tooltip(si, "HandBrake");
@@ -1122,38 +1126,34 @@ main(int argc, char *argv[])
     gint width, height;
 #if GTK_CHECK_VERSION(3, 0, 0)
     GtkRequisition min_size, size;
-    
+
     widget = GHB_WIDGET(ud->builder, "SrtCodeset");
     gtk_widget_get_preferred_size( widget, &min_size, &size );
     height = MAX(min_size.height, size.height);
     widget = GHB_WIDGET(ud->builder, "srt_code_label");
     gtk_widget_get_preferred_size( widget, &min_size, &size );
     height += MAX(min_size.height, size.height);
-    widget = GHB_WIDGET(ud->builder, "subtitle_table");
-    gtk_widget_set_size_request(widget, -1, height);
 #else
     GtkRequisition size;
-    
+
     widget = GHB_WIDGET(ud->builder, "SrtCodeset");
     gtk_widget_size_request( widget, &size );
     height = size.height;
     widget = GHB_WIDGET(ud->builder, "srt_code_label");
     gtk_widget_size_request( widget, &size );
     height += size.height;
-    widget = GHB_WIDGET(ud->builder, "subtitle_table");
-    gtk_widget_set_size_request(widget, -1, height);
 #endif
-    
+
     widget = GHB_WIDGET(ud->builder, "hb_window");
 
-    GdkGeometry geo = { 
+    GdkGeometry geo = {
         -1, -1, 1024, 768, -1, -1, 10, 10, 0, 0, GDK_GRAVITY_NORTH_WEST
     };
     GdkWindowHints geo_mask;
     geo_mask = GDK_HINT_MIN_SIZE | GDK_HINT_MAX_SIZE | GDK_HINT_BASE_SIZE;
     gtk_window_set_geometry_hints( GTK_WINDOW(widget), widget, &geo, geo_mask);
-    width = ghb_settings_get_int(ud->settings, "window_width");
-    height = ghb_settings_get_int(ud->settings, "window_height");
+    width = ghb_settings_get_int(ud->prefs, "window_width");
+    height = ghb_settings_get_int(ud->prefs, "window_height");
     gtk_window_resize(GTK_WINDOW(widget), width, height);
     gtk_widget_show(widget);
 
@@ -1263,22 +1263,31 @@ main(int argc, char *argv[])
     PangoFontDescription *font_desc;
     font_desc = pango_font_description_from_string("monospace 10");
     textview = GTK_TEXT_VIEW(GHB_WIDGET(ud->builder, "activity_view"));
-    gtk_widget_modify_font(GTK_WIDGET(textview), font_desc);      
-    pango_font_description_free(font_desc);      
+    gtk_widget_override_font(GTK_WIDGET(textview), font_desc);
+    pango_font_description_free(font_desc);
 
     // Everything should be go-to-go.  Lets rock!
 
     gtk_main();
     gtk_status_icon_set_visible(si, FALSE);
     ghb_backend_close();
-    if (ud->queue)
-        ghb_value_free(ud->queue);
-    ghb_value_free(ud->settings);
+
+    ghb_value_free(ud->queue);
+    ghb_value_free(ud->settings_array);
+    ghb_value_free(ud->prefs);
+    ghb_value_free(ud->globals);
+    ghb_value_free(ud->x264_priv);
+
     g_io_channel_unref(ud->activity_log);
     ghb_settings_close();
+    ghb_resource_free();
 #if !defined(_WIN32)
     notify_uninit();
 #endif
+
+    g_object_unref(ud->builder);
+
+    g_free(ud->current_dvd_device);
     g_free(ud);
 
     return 0;

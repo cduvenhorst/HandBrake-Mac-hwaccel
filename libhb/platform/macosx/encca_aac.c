@@ -1,6 +1,6 @@
 /* encca_aac.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -297,7 +297,7 @@ int encCoreAudioInit(hb_work_object_t *w, hb_job_t *job, enum AAC_MODE mode)
         hb_error("encCoreAudioInit: hb_audio_remap_init() failed");
     }
     uint64_t layout = hb_ff_mixdown_xlat(audio->config.out.mixdown, NULL);
-    hb_audio_remap_set_channel_layout(pv->remap, layout, pv->nchannels);
+    hb_audio_remap_set_channel_layout(pv->remap, layout);
 
     // get maximum output size
     AudioConverterGetProperty(pv->converter,

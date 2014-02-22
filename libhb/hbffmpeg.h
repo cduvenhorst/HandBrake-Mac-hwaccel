@@ -1,6 +1,6 @@
 /* hbffmpeg.h
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -13,6 +13,8 @@
 #include "libavutil/imgutils.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/opt.h"
+#include "libavutil/avutil.h"
+#include "libavutil/downmix_info.h"
 #include "libswscale/swscale.h"
 #include "libavresample/avresample.h"
 #include "common.h"
@@ -23,7 +25,6 @@ void hb_avcodec_init(void);
 int  hb_avcodec_open(AVCodecContext *, AVCodec *, AVDictionary **, int);
 int  hb_avcodec_close(AVCodecContext *);
 
-uint64_t hb_ff_layout_xlat(uint64_t ff_channel_layout, int nchannels);
 uint64_t hb_ff_mixdown_xlat(int hb_mixdown, int *downmix_mode);
 void     hb_ff_set_sample_fmt(AVCodecContext *, AVCodec *, enum AVSampleFormat);
 

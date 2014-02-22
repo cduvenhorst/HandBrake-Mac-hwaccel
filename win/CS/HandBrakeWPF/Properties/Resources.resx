@@ -233,10 +233,6 @@ Baseline profile, as required for iPods and similar devices, requires weighted P
 Note that some devices and players, even those that support Main Profile, 
 may have problems with Weighted P-frame prediction: the Apple TV is completely incompatible with it, for example.</value>
   </data>
-  <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="logo64" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\logo64.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="Video_x264ExtraArgs" xml:space="preserve">
     <value>The full x264 list of parameters: 
 {0}</value>
@@ -351,8 +347,8 @@ If you do not use this tab, it can be hidden from: Tools Menu &gt; Options &gt; 
     <value>Placebo Quality |</value>
   </data>
   <data name="Video_DxvaDecode" xml:space="preserve">
-    <value>Please note, this option is suitable only for slower systems. It will cause a bottleneck on faster systems.
-Accelerates H.264, MPEG-4, VC1 and WMV3 only. </value>
+    <value>Accelerates H.264, MPEG-4, VC1 and WMV3 only.  
+This can provide a small to modest improvement on slow hardware.</value>
   </data>
   <data name="Video_QuickSyncNotAvailable" xml:space="preserve">
     <value>QuickSync hardware not detected! 
@@ -364,9 +360,148 @@ In order to use the QuickSync encoder, you must:
 - Note that in multi-GPU enviroments, you may need to use 3rd party tools and workarounds to active the hardware.</value>
   </data>
   <data name="Video_ScalingModes" xml:space="preserve">
-    <value>Lanczos                - This is HandBrakes default scaler. It provides the best quality downscaling.
-Bicubic OpenCL  - A hardware accelerated version of the CPU based Bicubic scaler. 
-                                 This can be around 5~7% faster than software bicubic on a fast modern graphics card.
-                                 If OpenCL is unavailable, it will fallback to a software scaler. </value>
+    <value>OpenCL Scaling is only available for modern graphics cards that support OpenCL 1.1 or later. It will fallback to Lanczos software scaling when it is not available for use.  Performance gain up to 5%. Minor decrease in quality in some cases.</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Main_AutoAdd_AudioAndSubWarning" xml:space="preserve">
+    <value>Warning: It is not currently possible to use this feature if you require specific subtitle or audio tracks that the automatic selection feature (see options) doesn't support! Tracks are reset with every new source / title selected.</value>
+  </data>
+  <data name="Main_ScanSourceFirst" xml:space="preserve">
+    <value>You must first scan a source and setup your job before adding to the queue.</value>
+  </data>
+  <data name="Main_TurnOnAutoFileNaming" xml:space="preserve">
+    <value>You must turn on automatic file naming AND set a default path in preferences before you can add to the queue.</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="AreYouSure" xml:space="preserve">
+    <value>Are you sure?</value>
+  </data>
+  <data name="HandBrake_Title" xml:space="preserve">
+    <value>HandBrake</value>
+  </data>
+  <data name="Main_AlreadyEncoding" xml:space="preserve">
+    <value>HandBrake is already encoding.</value>
+  </data>
+  <data name="Main_ChooseDestination" xml:space="preserve">
+    <value>Please choose a destination for the file.</value>
+  </data>
+  <data name="Main_DestinationOverwrite" xml:space="preserve">
+    <value>The current file already exists, do you wish to overwrite it?</value>
+  </data>
+  <data name="Main_DuplicateDestinationOnQueue" xml:space="preserve">
+    <value>There are jobs on the queue with the same destination path. Please choose a different path for this job.</value>
+  </data>
+  <data name="Main_JobsPending_addon" xml:space="preserve">
+    <value>,  Pending Jobs {5}</value>
+  </data>
+  <data name="Main_NewDefaultPreset" xml:space="preserve">
+    <value>New Default Preset Set: {0}</value>
+  </data>
+  <data name="Main_NewUpdate" xml:space="preserve">
+    <value>A New Update is Available. Goto Tools Menu &gt; Options to Install</value>
+  </data>
+  <data name="Main_NoPresetSelected" xml:space="preserve">
+    <value>No Preset selected.</value>
+  </data>
+  <data name="Main_NoUpdateOfBuiltInPresets" xml:space="preserve">
+    <value>You can not modify built in presets. Please select one of your own presets.</value>
+  </data>
+  <data name="Main_PleaseSelectFolder" xml:space="preserve">
+    <value>Please select a folder.</value>
+  </data>
+  <data name="Main_PreparingToEncode" xml:space="preserve">
+    <value>Preparing to encode ...</value>
+  </data>
+  <data name="Main_PresetErrorBuiltInName" xml:space="preserve">
+    <value>You can not import a preset with the same name as a built-in preset.</value>
+  </data>
+  <data name="Main_PresetOverwriteWarning" xml:space="preserve">
+    <value>This preset appears to already exist. Would you like to overwrite it?</value>
+  </data>
+  <data name="Main_Presets" xml:space="preserve">
+    <value>Presets</value>
+  </data>
+  <data name="Main_PresetUpdateConfrimation" xml:space="preserve">
+    <value>Are you sure you wish to update the selected preset?</value>
+  </data>
+  <data name="Main_PresetUpdated" xml:space="preserve">
+    <value>The Preset has now been updated with your current settings.</value>
+  </data>
+  <data name="Main_PresetUpdateNotification" xml:space="preserve">
+    <value>HandBrake has determined your built-in presets are out of date... These presets will now be updated.
+Your custom presets have not been updated so you may have to re-create these by deleting and re-adding them.</value>
+  </data>
+  <data name="Main_QueueFinished" xml:space="preserve">
+    <value>Queue Finished</value>
+  </data>
+  <data name="Main_ScanCancelled" xml:space="preserve">
+    <value>Scan Cancelled.</value>
+  </data>
+  <data name="Main_ScanCompleted" xml:space="preserve">
+    <value>Scan Completed</value>
+  </data>
+  <data name="Main_ScanFailed_NoReason" xml:space="preserve">
+    <value>Scan failed: </value>
+  </data>
+  <data name="Main_ScanFailled_CheckLog" xml:space="preserve">
+    <value>Scan Failed... See Activity Log for details.</value>
+  </data>
+  <data name="Main_ScanningPleaseWait" xml:space="preserve">
+    <value>Scanning source, please wait...</value>
+  </data>
+  <data name="Main_ScanningTitleXOfY" xml:space="preserve">
+    <value>Scanning Title {0} of {1} ({2}%)</value>
+  </data>
+  <data name="Main_ScanSource" xml:space="preserve">
+    <value>You must first scan a source and setup your job before starting an encode.</value>
+  </data>
+  <data name="Main_SelectPreset" xml:space="preserve">
+    <value>Please select a preset.</value>
+  </data>
+  <data name="Main_SelectPresetForUpdate" xml:space="preserve">
+    <value>Please select a preset to update.</value>
+  </data>
+  <data name="Main_SelectSource" xml:space="preserve">
+    <value>Select 'Source' to continue</value>
+  </data>
+  <data name="Main_XEncodesPending" xml:space="preserve">
+    <value>{0} Encodes Pending</value>
+  </data>
+  <data name="Notice" xml:space="preserve">
+    <value>Notice</value>
+  </data>
+  <data name="Overwrite" xml:space="preserve">
+    <value>Overwrite?</value>
+  </data>
+  <data name="Question" xml:space="preserve">
+    <value>Question</value>
+  </data>
+  <data name="State_Ready" xml:space="preserve">
+    <value>Read</value>
+  </data>
+  <data name="Updated" xml:space="preserve">
+    <value>Updated</value>
+  </data>
+  <data name="Preset_OldVersion_Header" xml:space="preserve">
+    <value>Preset Version</value>
+  </data>
+  <data name="Preset_OldVersion_Message" xml:space="preserve">
+    <value>The preset you are trying to import is from a different version of HandBrake. 
+ It may not be possible to import or some values may be reset to default as a result. 
+
+Do you wish to proceed?</value>
+  </data>
+  <data name="Preset_UnableToImport_Header" xml:space="preserve">
+    <value>Unable to import preset!</value>
+  </data>
+  <data name="Preset_UnableToImport_Message" xml:space="preserve">
+    <value>Unable to import the preset as it appears to be corrupted or from an older version of HandBrake.</value>
+  </data>
+  <data name="Main_SetDestination" xml:space="preserve">
+    <value>You must first set the destination path for the output file before adding to the queue.</value>
   </data>
 </root>

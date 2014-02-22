@@ -72,6 +72,10 @@ AC_ARG_ENABLE(libmkv,
 	AS_HELP_STRING([--enable-libmkv], [enable libmkv muxer]),
 	use_libmkv=yes, use_libmkv=no)
 
+AC_ARG_ENABLE(x265,
+	AS_HELP_STRING([--enable-x265], [enable x265 encoder]),
+	use_x265=yes, use_x265=no)
+
 AC_ARG_ENABLE(gst,
 	AS_HELP_STRING([--disable-gst], [disable gstreamer (live preview)]),
 	gst_disable=yes, gst_disable=no)
@@ -114,12 +118,7 @@ case $host in
 esac
 
 PKG_PROG_PKG_CONFIG
-PKG_CHECK_MODULES(Gtk3, [gtk+-3.0], use_gtk3=yes, use_gtk3=no)
-if test "x$use_gtk3" = "xyes" ; then
-    GHB_PACKAGES="gtk+-3.0 $GHB_PACKAGES"
-else
-    GHB_PACKAGES="gtk+-2.0 >= 2.10 $GHB_PACKAGES"
-fi
+GHB_PACKAGES="gtk+-3.0 $GHB_PACKAGES"
 
 GST1_MODULES="gstreamer-1.0 gstreamer-video-1.0 gstreamer-audio-1.0 gstreamer-pbutils-1.0"
 GST0_MODULES="gstreamer-0.10 gstreamer-interfaces-0.10 gstreamer-video-0.10 gstreamer-audio-0.10 gstreamer-pbutils-0.10"
@@ -144,53 +143,22 @@ if test "x$gst_disable" = "xno" ; then
 fi
 
 if test "x$update_checks" = "xyes" ; then
-    if test "x$use_gtk3" = "xyes" ; then
-        PKG_CHECK_MODULES(WebKitGtk3, webkitgtk-3.0, use_webkitgtk3=yes, use_webkitgtk3=no)
-        if test "x$use_webkitgtk3" = "xyes" ; then
-            GHB_PACKAGES="$GHB_PACKAGES webkitgtk-3.0"
-        else
-            update_checks="no"
-	        CFLAGS="$CFLAGS -D_NO_UPDATE_CHECK"
-        fi
+    PKG_CHECK_MODULES(WebKitGtk3, webkitgtk-3.0, use_webkitgtk3=yes, use_webkitgtk3=no)
+    if test "x$use_webkitgtk3" = "xyes" ; then
+        GHB_PACKAGES="$GHB_PACKAGES webkitgtk-3.0"
     else
-        PKG_CHECK_MODULES(OldWebKitGtk1, WebKitGtk, old_webkit=yes, old_webkit=no)
-        if test "x$old_webkit" = "xyes" ; then
-            if test "x$mingw_flag" = "xno" ; then
-                GHB_PACKAGES="$GHB_PACKAGES WebKitGtk"
-                CXXFLAGS="$CXXFLAGS -D_OLD_WEBKIT"
-                CFLAGS="$CFLAGS -D_OLD_WEBKIT"
-            else
-                update_checks="no"
-                CFLAGS="$CFLAGS -D_NO_UPDATE_CHECK"
-            fi
-        else
-            PKG_CHECK_MODULES(WebKitGtk1, webkit-1.0, use_webkit1=yes, use_webkit1=no)
-            if test "x$use_webkit1" = "xyes" ; then
-                GHB_PACKAGES="$GHB_PACKAGES webkit-1.0"
-            else
-                update_checks="no"
-                CFLAGS="$CFLAGS -D_NO_UPDATE_CHECK"
-            fi
-        fi
+        update_checks="no"
+        CFLAGS="$CFLAGS -D_NO_UPDATE_CHECK"
     fi
 else
 	CFLAGS="$CFLAGS -D_NO_UPDATE_CHECK"
 fi
 
-if test "x$use_gtk3" = "xyes" ; then
-    PKG_CHECK_MODULES(libappindicator3, appindicator3-0.1, have_appind=yes, have_appind=no)
-    if test "x$have_appind" = "xyes" ; then
-        GHB_PACKAGES="$GHB_PACKAGES appindicator3-0.1"
-        CXXFLAGS="$CXXFLAGS -D_USE_APP_IND"
-        CFLAGS="$CFLAGS -D_USE_APP_IND"
-    fi
-else
-    PKG_CHECK_MODULES(libappindicator, appindicator-0.1, have_appind=yes, have_appind=no)
-    if test "x$have_appind" = "xyes" ; then
-        GHB_PACKAGES="$GHB_PACKAGES appindicator-0.1"
-        CXXFLAGS="$CXXFLAGS -D_USE_APP_IND"
-        CFLAGS="$CFLAGS -D_USE_APP_IND"
-    fi
+PKG_CHECK_MODULES(libappindicator3, appindicator3-0.1, have_appind=yes, have_appind=no)
+if test "x$have_appind" = "xyes" ; then
+    GHB_PACKAGES="$GHB_PACKAGES appindicator3-0.1"
+    CXXFLAGS="$CXXFLAGS -D_USE_APP_IND"
+    CFLAGS="$CFLAGS -D_USE_APP_IND"
 fi
 
 AM_CONDITIONAL([MINGW], [test "x$mingw_flag" = "xyes"])
@@ -207,15 +175,18 @@ fi
 GHB_TOOLS_CFLAGS=`$BUILD_PKG_CONFIG --cflags glib-2.0 gdk-pixbuf-2.0`
 GHB_TOOLS_LIBS=`$BUILD_PKG_CONFIG --libs glib-2.0 gdk-pixbuf-2.0`
 
+HB_LIBS="-lhandbrake -lavresample -lavformat -lavcodec -lavutil -ldvdnav -ldvdread -lmp3lame -lvorbis -lvorbisenc -logg -lsamplerate -lx264 -lswscale -ltheoraenc -ltheoradec -lz -lbz2 -lpthread -lbluray -lass -lfontconfig -lfreetype -lxml2"
+
 case $host in
   *-*-mingw*)
     if test "x$use_libdl" = "xyes" ; then
-		GHB_LIBS="$GHB_LIBS -ldl"
+		HB_LIBS+=" -ldl"
 	fi
     ;;
+  *)
+    HB_LIBS+=" -ldl"
+    ;;
 esac
-
-HB_LIBS="-lhb -la52 -lavresample -lavformat -lavcodec -lavutil -ldvdnav -ldvdread -lmp3lame -lmpeg2 -lvorbis -lvorbisenc -logg -lsamplerate -lx264 -lswscale -ltheoraenc -ltheoradec -lz -lbz2 -lpthread -lbluray -lass -lfontconfig -lfreetype -lxml2"
 
 if test "x$use_fdk_aac" = "xyes" ; then
     HB_LIBS+=" -lfdk-aac"
@@ -231,6 +202,10 @@ fi
 
 if test "x$use_libmkv" = "xyes" ; then
     HB_LIBS+=" -lmkv"
+fi
+
+if test "x$use_x265" = "xyes" ; then
+    HB_LIBS+=" -lx265"
 fi
 
 AC_SUBST(HB_LIBS)

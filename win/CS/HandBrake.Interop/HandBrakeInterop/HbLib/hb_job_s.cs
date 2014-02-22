@@ -13,7 +13,9 @@ namespace HandBrake.Interop.HbLib
 	using System;
 	using System.Runtime.InteropServices;
 
-	[StructLayout(LayoutKind.Sequential)]
+	using HandBrake.Interop.Helpers;
+
+    [StructLayout(LayoutKind.Sequential)]
 	public struct hb_job_s
 	{
 		/// int
@@ -88,15 +90,15 @@ namespace HandBrake.Interop.HbLib
 
 		public int fastfirstpass;
 
-		public IntPtr x264_preset;
+        public IntPtr encoder_preset;
 
-		public IntPtr x264_tune;
+        public IntPtr encoder_tune;
 
-		public IntPtr advanced_opts;
+        public IntPtr encoder_options;
 
-		public IntPtr h264_profile;
+        public IntPtr encoder_profile;
 
-		public IntPtr h264_level;
+        public IntPtr encoder_level;
 
 		/// int
 		public int areBframes;
@@ -224,9 +226,6 @@ namespace HandBrake.Interop.HbLib
 		public int decode;
 
 		public int async_depth;
-
-		/// const char*
-		public IntPtr preset;
 
 		/// av_qsv_context* 
 		public IntPtr ctx;

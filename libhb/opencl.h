@@ -1,6 +1,6 @@
 /* opencl.h
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -21,8 +21,10 @@
 #define HB_OCL_FUNC_DECL(name)      HB_OCL_FUNC_TYPE(name) name
 #define HB_OCL_API(ret, attr, name) typedef ret (attr* HB_OCL_FUNC_TYPE(name))
 
+#ifdef __APPLE__
 #pragma mark -
 #pragma mark OpenCL API
+#endif // __APPLE__
 
 /* Platform API */
 HB_OCL_API(cl_int, CL_API_CALL, clGetPlatformIDs)
@@ -622,7 +624,9 @@ HB_OCL_API(void *, CL_API_CALL, clGetExtensionFunctionAddressForPlatform)
 (cl_platform_id /* platform */,
  const char *   /* func_name */);
 
+#ifdef __APPLE__
 #pragma mark -
+#endif // __APPLE__
 
 typedef struct hb_opencl_library_s
 {
@@ -686,6 +690,7 @@ typedef struct hb_opencl_device_s
     {
         HB_OCL_VENDOR_AMD,
         HB_OCL_VENDOR_NVIDIA,
+        HB_OCL_VENDOR_INTEL,
         HB_OCL_VENDOR_OTHER,
     } ocl_vendor;
 } hb_opencl_device_t;

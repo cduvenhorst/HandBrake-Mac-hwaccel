@@ -1,6 +1,6 @@
 /* dvd.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -194,12 +194,9 @@ static void add_audio(int track, hb_list_t *list_audio, BLURAY_STREAM_INFO *bdau
               strlen( lang->native_name ) ? lang->native_name : lang->eng_name );
     snprintf( audio->config.lang.iso639_2, 
               sizeof( audio->config.lang.iso639_2 ), "%s", lang->iso639_2 );
-    snprintf( audio->config.lang.description,
-              sizeof( audio->config.lang.description ), "%s (%s)",
-              audio->config.lang.simple, codec_name );
 
-    hb_log( "bd: audio id=0x%x, lang=%s, 3cc=%s", audio->id,
-            audio->config.lang.description, audio->config.lang.iso639_2 );
+    hb_log("bd: audio id=0x%x, lang=%s (%s), 3cc=%s", audio->id,
+           audio->config.lang.simple, codec_name, audio->config.lang.iso639_2);
 
     audio->config.in.track = track;
     hb_list_add( list_audio, audio );
@@ -256,11 +253,14 @@ hb_title_t * hb_bd_title_scan( hb_bd_t * d, int tt, uint64_t min_duration )
     char * p_cur, * p_last = d->path;
     for( p_cur = d->path; *p_cur; p_cur++ )
     {
-        if( p_cur[0] == '/' && p_cur[1] )
+        if( IS_DIR_SEP(p_cur[0]) && p_cur[1] )
         {
             p_last = &p_cur[1];
         }
     }
+    char *dot_term = strrchr(p_last, '.');
+    if (dot_term)
+        *dot_term = '\0';
     snprintf( title->name, sizeof( title->name ), "%s", p_last );
     strncpy( title->path, d->path, 1024 );
     title->path[1023] = 0;
@@ -336,21 +336,12 @@ hb_title_t * hb_bd_title_scan( hb_bd_t * d, int tt, uint64_t min_duration )
             "Unknown"
           );
 
-    if ( bdvideo->coding_type == BLURAY_STREAM_TYPE_VIDEO_VC1 &&
-       ( bdvideo->format == BLURAY_VIDEO_FORMAT_480I ||
-         bdvideo->format == BLURAY_VIDEO_FORMAT_576I ||
-         bdvideo->format == BLURAY_VIDEO_FORMAT_1080I ) )
-    {
-        hb_log( "bd: Interlaced VC-1 not supported" );
-        goto fail;
-    }
-
     switch( bdvideo->coding_type )
     {
         case BLURAY_STREAM_TYPE_VIDEO_MPEG1:
         case BLURAY_STREAM_TYPE_VIDEO_MPEG2:
-            title->video_codec = WORK_DECMPEG2;
-            title->video_codec_param = 0;
+            title->video_codec = WORK_DECAVCODECV;
+            title->video_codec_param = AV_CODEC_ID_MPEG2VIDEO;
             break;
 
         case BLURAY_STREAM_TYPE_VIDEO_VC1:
@@ -432,7 +423,7 @@ hb_title_t * hb_bd_title_scan( hb_bd_t * d, int tt, uint64_t min_duration )
             case BLURAY_STREAM_TYPE_AUDIO_TRUHD:
                 // Add 2 audio tracks.  One for TrueHD and one for AC-3
                 add_audio(ii, title->list_audio, bdaudio, HB_SUBSTREAM_BD_AC3,
-                          HB_ACODEC_AC3, 0);
+                          HB_ACODEC_AC3, AV_CODEC_ID_AC3);
                 add_audio(ii, title->list_audio, bdaudio, HB_SUBSTREAM_BD_TRUEHD,
                           HB_ACODEC_FFMPEG, AV_CODEC_ID_TRUEHD);
                 break;
@@ -460,7 +451,7 @@ hb_title_t * hb_bd_title_scan( hb_bd_t * d, int tt, uint64_t min_duration )
 
             case BLURAY_STREAM_TYPE_AUDIO_AC3:
                 add_audio(ii, title->list_audio, bdaudio, 0,
-                          HB_ACODEC_AC3, 0);
+                          HB_ACODEC_AC3, AV_CODEC_ID_AC3);
                 break;
 
             case BLURAY_STREAM_TYPE_AUDIO_DTSHD_MASTER:

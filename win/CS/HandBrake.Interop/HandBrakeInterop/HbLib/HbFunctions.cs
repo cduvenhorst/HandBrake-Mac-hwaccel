@@ -302,6 +302,9 @@ namespace HandBrake.Interop.HbLib
 //const char*        hb_audio_dither_get_description(int method);
 //const hb_dither_t* hb_audio_dither_get_next(const hb_dither_t *last);
 
+		[DllImport("hb.dll", EntryPoint = "hb_audio_can_apply_drc", CallingConvention = CallingConvention.Cdecl)]
+		public static extern int hb_audio_can_apply_drc(uint codec, uint codec_param, int encoder);
+
 		[DllImport("hb.dll", EntryPoint = "hb_mixdown_is_supported", CallingConvention = CallingConvention.Cdecl)]
 		public static extern int hb_mixdown_is_supported(int mixdown, uint codec, ulong layout);
 
@@ -332,6 +335,7 @@ namespace HandBrake.Interop.HbLib
 //int                 hb_video_encoder_get_from_name(const char *name);
 //const char*         hb_video_encoder_get_name(int encoder);
 //const char*         hb_video_encoder_get_short_name(int encoder);
+//const char*         hb_video_encoder_get_long_name(int encoder);
 //const char*         hb_video_encoder_sanitize_name(const char *name);
 
 		[DllImport("hb.dll", EntryPoint = "hb_video_encoder_get_next", CallingConvention = CallingConvention.Cdecl)]
@@ -349,6 +353,7 @@ namespace HandBrake.Interop.HbLib
 //int                 hb_audio_encoder_get_from_name(const char *name);
 //const char*         hb_audio_encoder_get_name(int encoder);
 //const char*         hb_audio_encoder_get_short_name(int encoder);
+//const char*         hb_audio_encoder_get_long_name(int encoder);
 //const char*         hb_audio_encoder_sanitize_name(const char *name);
 
 		[DllImport("hb.dll", EntryPoint = "hb_audio_encoder_get_next", CallingConvention = CallingConvention.Cdecl)]
@@ -358,6 +363,7 @@ namespace HandBrake.Interop.HbLib
 //int                   hb_container_get_from_extension(const char *extension); // not really a container name
 //const char*           hb_container_get_name(int format);
 //const char*           hb_container_get_short_name(int format);
+//const char*           hb_container_get_long_name(int format);
 //const char*           hb_container_get_default_extension(int format);
 //const char*           hb_container_sanitize_name(const char *name);
 
@@ -402,8 +408,8 @@ namespace HandBrake.Interop.HbLib
 		public static extern void hb_job_close(IntPtr job);
 
 		///void hb_job_set_advanced_opts( hb_job_t *job, const char *advanced_opts );
-		[DllImport("hb.dll", EntryPoint = "hb_job_set_advanced_opts", CallingConvention = CallingConvention.Cdecl)]
-		public static extern void hb_job_set_advanced_opts(ref hb_job_s job, IntPtr advanced_opts);
+        [DllImport("hb.dll", EntryPoint = "hb_job_set_encoder_options", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void hb_job_set_encoder_options(ref hb_job_s job, IntPtr advanced_opts);
 
 		///void hb_job_set_file( hb_job_t *job, const char *file );
 		[DllImport("hb.dll", EntryPoint = "hb_job_set_file", CallingConvention = CallingConvention.Cdecl)]

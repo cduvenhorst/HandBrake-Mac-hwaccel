@@ -8,6 +8,10 @@ include $(SRC/)make/include/tool.defs
 
 ###############################################################################
 
+ifeq (1,$(FEATURE.local_pkgconfig))
+    MODULES += contrib/pkgconfig
+endif
+
 ifeq (1,$(FEATURE.local_autotools))
     MODULES += contrib/autoconf
     MODULES += contrib/automake
@@ -18,8 +22,6 @@ ifeq (1,$(FEATURE.local_autotools))
 else
     AUTOTOOL_MODULES =
 endif
-
-MODULES += contrib/a52dec
 
 ifneq (,$(filter $(BUILD.system),cygwin mingw))
 ifneq ($(HAS.bz2),1)
@@ -55,12 +57,15 @@ ifeq (1,$(FEATURE.libmkv))
     MODULES += contrib/libmkv
 endif
 
+ifeq (1,$(FEATURE.x265))
+    MODULES += contrib/x265
+endif
+
 MODULES += contrib/lame
 MODULES += contrib/ffmpeg
 MODULES += contrib/libdvdread
 MODULES += contrib/libdvdnav
 MODULES += contrib/libbluray
-MODULES += contrib/mpeg2dec
 
 ifneq (,$(filter $(BUILD.system),mingw))
 ifneq ($(HAS.pthread),1)

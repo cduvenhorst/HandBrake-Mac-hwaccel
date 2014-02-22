@@ -2,18 +2,19 @@
 /*
  * presets.c
  * Copyright (C) John Stebbins 2008-2013 <stebbins@stebbins>
- * 
+ *
  * presets.c is free software.
- * 
+ *
  * You may redistribute it and/or modify it under the terms of the
  * GNU General Public License, as published by the Free Software
  * Foundation; either version 2 of the License, or (at your option)
  * any later version.
- * 
+ *
  */
 
 #include <glib.h>
 #include <glib-object.h>
+#include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
 #include "values.h"
@@ -263,7 +264,7 @@ ghb_value_cmp(const GValue *vala, const GValue *valb)
     {
         return 1;
     }
-    
+
     if (typa == G_TYPE_STRING)
     {
         char *stra, *strb;
@@ -287,7 +288,7 @@ ghb_value_cmp(const GValue *vala, const GValue *valb)
         g_free(strb);
         return res;
     }
-    else if (typa == G_TYPE_INT64 || typa == G_TYPE_INT || 
+    else if (typa == G_TYPE_INT64 || typa == G_TYPE_INT ||
             typa == G_TYPE_BOOLEAN)
     {
         return ghb_value_int64(vala) - ghb_value_int64(valb);
@@ -445,7 +446,7 @@ ghb_array_value_reset(GValue *gval, guint size)
     g_value_take_boxed(gval, array);
 }
 
-GValue* 
+GValue*
 ghb_date_value_new(GDate *date)
 {
     GValue *gval = ghb_value_new(g_date_get_type());
@@ -453,7 +454,7 @@ ghb_date_value_new(GDate *date)
     return gval;
 }
 
-GValue* 
+GValue*
 ghb_rawdata_value_new(ghb_rawdata_t *data)
 {
     GValue *gval = ghb_value_new(ghb_rawdata_get_type());
@@ -712,7 +713,11 @@ ghb_array_copy(GValue *arr1, GValue *arr2, gint count)
     // empty the first array if it is not already empty
     len = ghb_array_len(arr1);
     for (ii = 0; ii < len; ii++)
+    {
+        GValue *old = ghb_array_get_nth(arr1, 0);
         ghb_array_remove(arr1, 0);
+        ghb_value_free(old);
+    }
 
     len = ghb_array_len(arr2);
     count = MIN(count, len);
@@ -779,14 +784,14 @@ xform_boolean_double(const GValue *bval, GValue *dval)
 void
 ghb_register_transforms()
 {
-    g_value_register_transform_func(G_TYPE_STRING, G_TYPE_INT64, 
+    g_value_register_transform_func(G_TYPE_STRING, G_TYPE_INT64,
                                 xform_string_int64);
-    g_value_register_transform_func(G_TYPE_STRING, G_TYPE_INT, 
+    g_value_register_transform_func(G_TYPE_STRING, G_TYPE_INT,
                                 xform_string_int);
-    g_value_register_transform_func(G_TYPE_STRING, G_TYPE_DOUBLE, 
+    g_value_register_transform_func(G_TYPE_STRING, G_TYPE_DOUBLE,
                                 xform_string_double);
-    g_value_register_transform_func(G_TYPE_BOOLEAN, G_TYPE_DOUBLE, 
+    g_value_register_transform_func(G_TYPE_BOOLEAN, G_TYPE_DOUBLE,
                                 xform_boolean_double);
-    g_value_register_transform_func(G_TYPE_DOUBLE, G_TYPE_STRING, 
+    g_value_register_transform_func(G_TYPE_DOUBLE, G_TYPE_STRING,
                                 xform_double_string);
 }

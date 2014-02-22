@@ -1,6 +1,6 @@
 /* hb_dict.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -186,6 +186,11 @@ hb_dict_t * hb_encopts_to_dict( const char * encopts, int encoder )
                 // x264 has multiple names for some options
                 if( encoder == HB_VCODEC_X264 )
                     name = hb_x264_encopt_name( name );
+#ifdef USE_X265
+                // x265 has multiple names for some options
+                if( encoder == HB_VCODEC_X265 )
+                    name = hb_x265_encopt_name( name );
+#endif
                 hb_dict_set( &dict, name, value );
             }
         }

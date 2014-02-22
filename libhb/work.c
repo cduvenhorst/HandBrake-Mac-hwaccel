@@ -1,6 +1,6 @@
 /* work.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -8,7 +8,6 @@
  */
 
 #include "hb.h"
-#include "a52dec/a52.h"
 #include "libavformat/avformat.h"
 #include "openclwrapper.h"
 #include "opencl.h"
@@ -22,7 +21,7 @@ typedef struct
 {
     hb_list_t * jobs;
     hb_job_t  ** current_job;
-    int       * error;
+    hb_error_code * error;
     volatile int * die;
 
 } hb_work_t;
@@ -47,7 +46,7 @@ static void filter_loop( void * );
  * @param die Handle to user inititated exit indicator.
  * @param error Handle to error indicator.
  */
-hb_thread_t * hb_work_init( hb_list_t * jobs, volatile int * die, int * error, hb_job_t ** job )
+hb_thread_t * hb_work_init( hb_list_t * jobs, volatile int * die, hb_error_code * error, hb_job_t ** job )
 {
     hb_work_t * work = calloc( sizeof( hb_work_t ), 1 );
 
@@ -125,7 +124,6 @@ hb_work_object_t* hb_codec_decoder(int codec)
     }
     switch (codec)
     {
-        case HB_ACODEC_AC3:  return hb_get_work(WORK_DECA52);
         case HB_ACODEC_LPCM: return hb_get_work(WORK_DECLPCM);
         default:             break;
     }
@@ -213,7 +211,7 @@ void hb_display_job_info(hb_job_t *job)
 
     hb_log( "   + %s", job->file );
 
-    hb_log("   + container: %s", hb_container_get_name(job->mux));
+    hb_log("   + container: %s", hb_container_get_long_name(job->mux));
     switch (job->mux)
     {
         case HB_MUX_MP4V2:
@@ -306,39 +304,73 @@ void hb_display_job_info(hb_job_t *job)
     if( !job->indepth_scan )
     {
         /* Video encoder */
-        hb_log("   + encoder: %s", hb_video_encoder_get_name(job->vcodec));
+        hb_log("   + encoder: %s",
+               hb_video_encoder_get_long_name(job->vcodec));
 
-        if( job->x264_preset && *job->x264_preset &&
-            job->vcodec == HB_VCODEC_X264 )
+        if (job->encoder_preset && *job->encoder_preset)
         {
-            hb_log( "     + x264 preset: %s", job->x264_preset );
-        }
-        if( job->x264_tune && *job->x264_tune &&
-            job->vcodec == HB_VCODEC_X264 )
-        {
-            hb_log( "     + x264 tune: %s", job->x264_tune );
-        }
+            switch (job->vcodec)
+            {
+                case HB_VCODEC_X264:
+                    hb_log("     + x264 preset: %s", job->encoder_preset);
+                    break;
+                case HB_VCODEC_X265:
+                    hb_log("     + x265 preset: %s", job->encoder_preset);
+                    break;
 #ifdef USE_QSV
-        if ((job->qsv.preset != NULL && *job->qsv.preset) &&
-            (job->vcodec & HB_VCODEC_QSV_MASK))
-        {
-            hb_log("     + QSV preset: %s", job->qsv.preset);
-        }
+                case HB_VCODEC_QSV_H264:
+                    hb_log("     + QSV preset: %s", job->encoder_preset);
+                    break;
 #endif
-        if (job->advanced_opts != NULL && *job->advanced_opts &&
-            (job->vcodec != HB_VCODEC_THEORA))
-        {
-            hb_log("     + options: %s", job->advanced_opts);
+                default:
+                    break;
+            }
         }
-        if (job->h264_profile != NULL && *job->h264_profile &&
-            (job->vcodec & HB_VCODEC_H264_MASK))
+        if (job->encoder_tune && *job->encoder_tune)
         {
-            hb_log("     + h264 profile: %s", job->h264_profile);
+            switch (job->vcodec)
+            {
+                case HB_VCODEC_X264:
+                    hb_log("     + x264 tune: %s", job->encoder_tune);
+                    break;
+                case HB_VCODEC_X265:
+                    hb_log("     + x265 tune: %s", job->encoder_tune);
+                    break;
+                default:
+                    break;
+            }
         }
-        if (job->h264_level != NULL && *job->h264_level &&
-            (job->vcodec & HB_VCODEC_H264_MASK))
+        if (job->encoder_options != NULL && *job->encoder_options &&
+            job->vcodec != HB_VCODEC_THEORA)
         {
-            hb_log("     + h264 level: %s", job->h264_level);
+            hb_log("     + options: %s", job->encoder_options);
+        }
+        if (job->encoder_profile && *job->encoder_profile)
+        {
+            switch (job->vcodec)
+            {
+                case HB_VCODEC_X264:
+                case HB_VCODEC_QSV_H264:
+                    hb_log("     + H.264 profile: %s", job->encoder_profile);
+                    break;
+                case HB_VCODEC_X265:
+                    hb_log("     + H.265 profile: %s", job->encoder_profile);
+                    break;
+                default:
+                    break;
+            }
+        }
+        if (job->encoder_level && *job->encoder_level)
+        {
+            switch (job->vcodec)
+            {
+                case HB_VCODEC_X264:
+                case HB_VCODEC_QSV_H264:
+                    hb_log("     + H.264 level: %s", job->encoder_level);
+                    break;
+                default:
+                    break;
+            }
         }
 
         if (job->vquality >= 0)
@@ -452,7 +484,10 @@ void hb_display_job_info(hb_job_t *job)
                 {
                     hb_log( "   + gain: %.fdB", audio->config.out.gain );
                 }
-                if( ( audio->config.out.dynamic_range_compression != 0.0 ) && ( audio->config.in.codec == HB_ACODEC_AC3 ) )
+                if (audio->config.out.dynamic_range_compression > 0.0f &&
+                    hb_audio_can_apply_drc(audio->config.in.codec,
+                                           audio->config.in.codec_param,
+                                           audio->config.out.codec))
                 {
                     hb_log( "   + dynamic range compression: %f", audio->config.out.dynamic_range_compression );
                 }
@@ -462,7 +497,7 @@ void hb_display_job_info(hb_job_t *job)
                            hb_audio_dither_get_description(audio->config.out.dither_method));
                 }
                 hb_log("   + encoder: %s",
-                       hb_audio_encoder_get_name(audio->config.out.codec));
+                       hb_audio_encoder_get_long_name(audio->config.out.codec));
                 if (audio->config.out.bitrate > 0)
                 {
                     hb_log("     + bitrate: %d kbps, samplerate: %d Hz",
@@ -697,7 +732,7 @@ static void do_job(hb_job_t *job)
      *      the list and we can't use CopyFrame, disable QSV decoding until a
      *      better solution is implemented.
      */
-    if (!(hb_qsv_info->capabilities & HB_QSV_CAP_CORE_COPYFRAME))
+    if (hb_qsv_copyframe_is_slow(job->vcodec))
     {
         if (job->list_filter != NULL)
         {
@@ -1154,16 +1189,12 @@ static void do_job(hb_job_t *job)
     sync = hb_sync_init( job );
 
     /* Video decoder */
-    int vcodec = title->video_codec? title->video_codec : WORK_DECMPEG2;
-#if defined(USE_FF_MPEG2)
-    if (vcodec == WORK_DECMPEG2)
+    if (title->video_codec == WORK_NONE)
     {
-        vcodec = WORK_DECAVCODECV;
-        title->video_codec_param = AV_CODEC_ID_MPEG2VIDEO;
+        hb_error("No video decoder set!");
+        goto cleanup;
     }
-#endif
-
-    hb_list_add( job->list_work, ( w = hb_get_work( vcodec ) ) );
+    hb_list_add(job->list_work, (w = hb_get_work(title->video_codec)));
     w->codec_param = title->video_codec_param;
     w->fifo_in  = job->fifo_mpeg2;
     w->fifo_out = job->fifo_raw;
@@ -1243,6 +1274,11 @@ static void do_job(hb_job_t *job)
         case HB_VCODEC_THEORA:
             w = hb_get_work( WORK_ENCTHEORA );
             break;
+#ifdef USE_X265
+        case HB_VCODEC_X265:
+            w = hb_get_work( WORK_ENCX265 );
+            break;
+#endif
         }
         // Handle case where there are no filters.  
         // This really should never happen.
@@ -1619,13 +1655,14 @@ cleanup:
     }
 
     hb_buffer_pool_free();
-    hb_job_close( &job );
-
+          
     /* OpenCL: must be closed *after* freeing the buffer pool */
     if (job->use_opencl)
     {
         hb_ocl_close();
     }
+    
+    hb_job_close( &job );
 }
 
 static inline void copy_chapter( hb_buffer_t * dst, hb_buffer_t * src )
@@ -1735,6 +1772,8 @@ static void filter_loop( void * _f )
         {
             f->chapter_time = buf_in->s.start;
             f->chapter_val = buf_in->s.new_chap;
+            // don't let 'filter_loop' put a chapter mark on the wrong buffer
+            buf_in->s.new_chap = 0;
         }
         if ( *f->done )
         {

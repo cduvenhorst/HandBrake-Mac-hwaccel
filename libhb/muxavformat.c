@@ -1,6 +1,6 @@
 /* muxavformat.c
 
-   Copyright (c) 2003-2013 HandBrake Team
+   Copyright (c) 2003-2014 HandBrake Team
    This file is part of the HandBrake source code
    Homepage: <http://handbrake.fr/>.
    It may be used under the terms of the GNU General Public License v2.
@@ -48,7 +48,7 @@ struct hb_mux_object_s
     int                 ntracks;
     hb_mux_data_t    ** tracks;
 
-    int                 delay;
+    int64_t             delay;
 };
 
 enum
@@ -130,7 +130,7 @@ static int avformatInit( hb_mux_object_t * m )
     char *lang;
 
 
-    m->delay = -1;
+    m->delay = AV_NOPTS_VALUE;
     max_tracks = 1 + hb_list_count( job->list_audio ) +
                      hb_list_count( job->list_subtitle );
 
@@ -775,7 +775,7 @@ static int avformatInit( hb_mux_object_t * m )
                 avcodec_get_context_defaults3(st->codec, NULL);
 
                 st->codec->codec_type = AVMEDIA_TYPE_ATTACHMENT;
-                track->st->codec->codec_id = AV_CODEC_ID_TTF;
+                st->codec->codec_id = AV_CODEC_ID_TTF;
 
                 priv_size = attachment->size;
                 priv_data = av_malloc(priv_size);
@@ -786,8 +786,8 @@ static int avformatInit( hb_mux_object_t * m )
                 }
                 memcpy(priv_data, attachment->data, priv_size);
 
-                track->st->codec->extradata = priv_data;
-                track->st->codec->extradata_size = priv_size;
+                st->codec->extradata = priv_data;
+                st->codec->extradata_size = priv_size;
 
                 av_dict_set(&st->metadata, "filename", attachment->name, 0);
             }
@@ -952,20 +952,20 @@ static void computeDelay(hb_mux_object_t *m)
 static int avformatMux(hb_mux_object_t *m, hb_mux_data_t *track, hb_buffer_t *buf)
 {
     AVPacket pkt;
-    int64_t dts, pts, duration = -1;
+    int64_t dts, pts, duration = AV_NOPTS_VALUE;
     hb_job_t *job     = m->job;
     uint8_t tx3g_out[2048];
 
-    if (m->delay == -1)
+    if (m->delay == AV_NOPTS_VALUE)
     {
         computeDelay(m);
     }
 
     if (buf != NULL)
     {
-        if (buf->s.start != -1)
+        if (buf->s.start != AV_NOPTS_VALUE)
             buf->s.start += m->delay;
-        if (buf->s.renderOffset != -1)
+        if (buf->s.renderOffset != AV_NOPTS_VALUE)
             buf->s.renderOffset += m->delay;
     }
 
@@ -982,7 +982,7 @@ static int avformatMux(hb_mux_object_t *m, hb_mux_data_t *track, hb_buffer_t *bu
     if (buf == NULL)
         return 0;
 
-    if (buf->s.renderOffset == -1)
+    if (buf->s.renderOffset == AV_NOPTS_VALUE)
     {
         dts = av_rescale_q(buf->s.start, (AVRational){1,90000},
                            track->st->time_base);
@@ -1099,7 +1099,10 @@ static int avformatMux(hb_mux_object_t *m, hb_mux_data_t *track, hb_buffer_t *bu
                     int ret = av_interleaved_write_frame(m->oc, &empty_pkt);
                     if (ret < 0)
                     {
-                        hb_error("av_interleaved_write_frame failed!");
+                        char errstr[64];
+                        av_strerror(ret, errstr, sizeof(errstr));
+                        hb_error("avformatMux: track %d, av_interleaved_write_frame failed with error '%s' (empty_pkt)",
+                                 track->st->index, errstr);
                         *job->done_error = HB_ERROR_UNKNOWN;
                         *job->die = 1;
                         return -1;
@@ -1146,7 +1149,10 @@ static int avformatMux(hb_mux_object_t *m, hb_mux_data_t *track, hb_buffer_t *bu
     // write errors (like disk full condition).
     if (ret < 0 || m->oc->pb->error != 0)
     {
-        hb_error("av_interleaved_write_frame failed!");
+        char errstr[64];
+        av_strerror(ret < 0 ? ret : m->oc->pb->error, errstr, sizeof(errstr));
+        hb_error("avformatMux: track %d, av_interleaved_write_frame failed with error '%s'",
+                 track->st->index, errstr);
         *job->done_error = HB_ERROR_UNKNOWN;
         *job->die = 1;
         return -1;
