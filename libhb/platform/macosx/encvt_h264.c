@@ -349,24 +349,24 @@ int encvt_h264Init( hb_work_object_t * w, hb_job_t * job )
     pv->job = job;
 
     // set the profile and level before initializing the session
-    if (job->h264_profile != NULL && *job->h264_profile != '\0')
+    if (job->encoder_profile != NULL && *job->encoder_profile != '\0')
     {
-        if (!strcasecmp(job->h264_profile, "baseline"))
+        if (!strcasecmp(job->encoder_profile, "baseline"))
         {
             pv->h264_profile = HB_VT_H264_PROFILE_BASELINE;
         }
-        else if (!strcasecmp(job->h264_profile, "main") ||
-                 !strcasecmp(job->h264_profile, "auto"))
+        else if (!strcasecmp(job->encoder_profile, "main") ||
+                 !strcasecmp(job->encoder_profile, "auto"))
         {
             pv->h264_profile = HB_VT_H264_PROFILE_MAIN;
         }
-        else if (!strcasecmp(job->h264_profile, "high"))
+        else if (!strcasecmp(job->encoder_profile, "high"))
         {
             pv->h264_profile = HB_VT_H264_PROFILE_HIGH;
         }
         else
         {
-            hb_error("encvt_h264Init: invalid profile '%s'", job->h264_profile);
+            hb_error("encvt_h264Init: invalid profile '%s'", job->encoder_profile);
             *job->die = 1;
             return -1;
         }
@@ -375,12 +375,12 @@ int encvt_h264Init( hb_work_object_t * w, hb_job_t * job )
     {
         pv->h264_profile = HB_VT_H264_PROFILE_MAIN;
     }
-    if (job->h264_level != NULL && *job->h264_level != '\0')
+    if (job->encoder_level != NULL && *job->encoder_level != '\0')
     {
         int i;
         for (i = 0; hb_vt_h264_levels[i].name != NULL; i++)
         {
-            if (!strcasecmp(job->h264_level, hb_vt_h264_levels[i].name))
+            if (!strcasecmp(job->encoder_level, hb_vt_h264_levels[i].name))
             {
                 pv->profileLevel = hb_vt_h264_levels[i].level[pv->h264_profile];
                 break;
@@ -388,7 +388,7 @@ int encvt_h264Init( hb_work_object_t * w, hb_job_t * job )
         }
         if (hb_vt_h264_levels[i].name == NULL)
         {
-            hb_error("encvt_h264Init: invalid level '%s'", job->h264_level);
+            hb_error("encvt_h264Init: invalid level '%s'", job->encoder_level);
             *job->die = 1;
             return -1;
         }
